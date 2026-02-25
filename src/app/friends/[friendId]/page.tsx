@@ -1,0 +1,129 @@
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { profiles, friendships, wanted, projects } from "@/db/schema";
+import { eq, and, or } from "drizzle-orm";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+
+export default async function FriendWantedPage({ 
+  params,
+  searchParams,
+}: { 
+  params: Promise<{ friendId: string }>;
+  searchParams: Promise<{ scale?: string }>;
+}) {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const resolvedParams = await params;
+  const friendId = resolvedParams.friendId;
+  
+  const resolvedSearchParams = await searchParams;
+  const currentScale = resolvedSearchParams.scale || "ALL";
+
+  // 1. 本当にフレンド（ACCEPTED）かどうかを強固にチェック
+  const isFriend = await db.select().from(friendships).where(
+    and(
+      or(
+        and(eq(friendships.requesterId, userId), eq(friendships.addresseeId, friendId)),
+        and(eq(friendships.addresseeId, userId), eq(friendships.requesterId, friendId))
+      ),
+      eq(friendships.status, "ACCEPTED")
+    )
+  );
+
+  if (isFriend.length === 0) {
+    return <div className="p-8 text-red-600 font-bold">アクセス権限がありません（相互フレンドのみ閲覧可能です）。</div>;
+  }
+
+  // 2. フレンドのプロフィールを取得
+  const [friendProfile] = await db.select().from(profiles).where(eq(profiles.userId, friendId));
+  if (!friendProfile) notFound();
+
+  // 3. フレンドのWANTEDリストを、所属するプロジェクト名と一緒に一括取得
+  let friendWantedQuery = db
+    .select({
+      id: wanted.id,
+      name: wanted.name,
+      scale: wanted.scale,
+      remarks: wanted.remarks,
+      projectName: projects.name,
+    })
+    .from(wanted)
+    .innerJoin(projects, eq(wanted.projectId, projects.id))
+    .where(eq(projects.userId, friendId));
+
+  const friendWantedList = await friendWantedQuery;
+
+  // 4. TypeScript側でスケール絞り込み（DBクエリで絞り込んでもOKですが、今回はシンプルに配列をフィルタ）
+  const filteredList = currentScale === "ALL" 
+    ? friendWantedList 
+    : friendWantedList.filter(w => w.scale === currentScale);
+
+  // 表示用のスケール変換用辞書
+  const scaleLabels: Record<string, string> = {
+    "ALL": "すべて", "N": "Nゲージ", "HO": "HOゲージ", "PLARAIL": "プラレール",
+    "DECAL": "インレタ・シール", "PART_N": "Nパーツ", "PART_HO": "HOパーツ", "OTHER": "その他"
+  };
+
+  return (
+    <main className="min-h-screen p-8 max-w-3xl mx-auto">
+      <div className="mb-6">
+        <Link href="/friends" className="text-blue-600 hover:underline">← フレンド一覧に戻る</Link>
+      </div>
+
+      <header className="mb-8 border-b pb-4">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          👀 {friendProfile.displayName} さんのWANTEDリスト
+        </h1>
+      </header>
+
+      {/* スケール絞り込みフィルター（URLパラメータを使って再描画） */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {Object.entries(scaleLabels).map(([key, label]) => (
+          <Link 
+            key={key} 
+            href={`/friends/${friendId}${key === "ALL" ? "" : `?scale=${key}`}`}
+            className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+              currentScale === key 
+                ? "bg-blue-600 text-white shadow-md" 
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+      </div>
+
+      {/* WANTED一覧表示 */}
+      <div className="space-y-4">
+        {filteredList.length === 0 ? (
+          <p className="text-gray-500 bg-gray-50 p-6 rounded text-center">
+            {currentScale === "ALL" ? "WANTEDリストは空です。" : "このスケールのWANTEDはありません。"}
+          </p>
+        ) : (
+          filteredList.map((item) => (
+            <div key={item.id} className="bg-white border-l-4 border-yellow-400 p-4 rounded shadow-sm">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded mr-2">
+                    {scaleLabels[item.scale]}
+                  </span>
+                  <span className="font-bold text-lg">{item.name}</span>
+                </div>
+              </div>
+              <div className="mt-2 text-sm text-gray-600">
+                📁 プロジェクト: <span className="font-medium">{item.projectName}</span>
+              </div>
+              {item.remarks && (
+                <div className="mt-2 text-sm bg-gray-50 p-2 rounded text-gray-700 border">
+                  📝 {item.remarks}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </main>
+  );
+}

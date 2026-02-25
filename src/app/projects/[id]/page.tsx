@@ -53,6 +53,46 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
     revalidatePath(`/projects/${projectId}`);
   }
 
+  // WANTED → 所有品（items）へ移行
+  async function handleMoveWantedToItem(formData: FormData) {
+    "use server";
+
+    const { userId: actionUserId } = await auth();
+    if (!actionUserId) return;
+
+    const wantedId = formData.get("wantedId") as string;
+    const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
+    const maker = (formData.get("maker") as string) ?? "";
+
+    if (!wantedId || !type) return;
+
+    // 他人のプロジェクトに対する操作防止
+    const [actionProject] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, actionUserId)));
+    if (!actionProject) return;
+
+    const [targetWanted] = await db
+      .select({ id: wanted.id, name: wanted.name })
+      .from(wanted)
+      .where(and(eq(wanted.id, wantedId), eq(wanted.projectId, projectId)));
+    if (!targetWanted) return;
+
+    await db.insert(items).values({
+      projectId,
+      type,
+      maker: maker.trim() || null,
+      name: targetWanted.name,
+    });
+
+    await db
+      .delete(wanted)
+      .where(and(eq(wanted.id, wantedId), eq(wanted.projectId, projectId)));
+
+    revalidatePath(`/projects/${projectId}`);
+  }
+
   // --- 画面UI ---
   return (
     <main className="min-h-screen p-8 max-w-4xl mx-auto">
@@ -105,18 +145,53 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
           <h2 className="text-xl font-bold mb-4 border-b border-yellow-300 pb-2 text-yellow-800">WANTED (手配リスト)</h2>
           
           <form action={handleAddWanted} className="mb-6 flex flex-col gap-2">
-            <input type="text" name="name" placeholder="探している物 (例: モハ103)" className="border border-yellow-300 p-2 rounded flex-1" required />
+            <div className="flex gap-2">
+              <select name="scale" className="border border-yellow-300 p-2 rounded bg-white text-sm" required>
+                <option value="N">N</option>
+                <option value="HO">HO</option>
+                <option value="PLARAIL">プラレール</option>
+                <option value="DECAL">インレタ/シール</option>
+                <option value="PART_N">Nパーツ</option>
+                <option value="PART_HO">HOパーツ</option>
+                <option value="OTHER">その他</option>
+              </select>
+              <input type="text" name="name" placeholder="探している物 (例: モハ103)" className="border border-yellow-300 p-2 rounded flex-1" required />
+            </div>
             <div className="flex gap-2">
               <input type="text" name="remarks" placeholder="備考 (例: 1500円以下なら即買い)" className="border border-yellow-300 p-2 rounded flex-1 text-sm" />
-              <button type="submit" className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded">WANTED登録</button>
+              <button type="submit" className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded font-bold">追加</button>
             </div>
           </form>
 
           <ul className="space-y-3">
             {projectWanted.map(w => (
               <li key={w.id} className="p-3 bg-white border border-yellow-300 rounded shadow-sm">
-                <div className="font-bold text-red-600">{w.name}</div>
-                {w.remarks && <div className="text-sm text-gray-600 mt-1">📝 {w.remarks}</div>}
+                <div className="flex flex-col gap-2">
+                  <div>
+                    <div className="font-bold text-red-600">{w.name}</div>
+                    {w.remarks && <div className="text-sm text-gray-600 mt-1">📝 {w.remarks}</div>}
+                  </div>
+
+                  <form action={handleMoveWantedToItem} className="flex flex-col gap-2">
+                    <input type="hidden" name="wantedId" value={w.id} />
+                    <div className="flex gap-2">
+                      <select name="type" className="border border-yellow-300 p-2 rounded text-sm" defaultValue="SINGLE_CAR" required>
+                        <option value="SINGLE_CAR">単品車両</option>
+                        <option value="SET">セット</option>
+                        <option value="PART">パーツ</option>
+                      </select>
+                      <input
+                        type="text"
+                        name="maker"
+                        placeholder="メーカー (任意)"
+                        className="border border-yellow-300 p-2 rounded flex-1 text-sm"
+                      />
+                      <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">
+                        所有品へ移行
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </li>
             ))}
             {projectWanted.length === 0 && <p className="text-gray-500 text-sm">現在探しているものはありません。</p>}
