@@ -141,7 +141,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
         
         {/* 左側：所有品（Items）エリア */}
         <section className="bg-white p-6 rounded-lg shadow-sm border">
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">手持ちの車両・パーツ</h2>
+          <h2 className="text-xl font-bold mb-4 border-b pb-2">手持ちの車両・パーツ</h2>    
           
           <form action={handleAddItem} className="mb-6 flex flex-col gap-2">
             {/* 1行目: 種別 + スケール */}
@@ -209,7 +209,9 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                   </div>
                   <div className="min-w-0 break-words">
                     {item.maker && <span className="text-gray-600 mr-2">[{item.maker}]</span>}
-                    <span className="font-medium">{item.name}</span>
+                    <Link href={`/item/${item.id}`} className="font-medium hover:text-blue-600 hover:underline">
+                      {item.name}
+                    </Link>
                   </div>
                 </div>
               </li>
@@ -266,7 +268,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
               <textarea
                 name="remarks"
                 placeholder="備考 (例: 旧製品を優先的に探す)"
-                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 h-11 resize-y"
+                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 h-24 resize-y"
               />
               <button
                 type="submit"

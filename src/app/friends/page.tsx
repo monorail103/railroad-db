@@ -1,4 +1,3 @@
-
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/db"; // パスは環境に合わせてください
 import { profiles, friendships } from "@/db/schema";

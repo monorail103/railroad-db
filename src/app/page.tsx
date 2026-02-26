@@ -45,11 +45,17 @@ export default async function Home() {
     if (!name) return;
 
     // DBに新規プロジェクトをインサート
-    await db.insert(projects).values({
-      userId,
-      name,
-      status: "IN_PROGRESS",
-    });
+
+    try {
+      await db.insert(projects).values({
+        userId,
+        name,
+        status: "IN_PROGRESS",
+      });
+    } catch (error) {
+      console.error("プロジェクトの作成に失敗:", error);
+      return;
+    }
 
     // 画面を最新状態に更新
     revalidatePath("/");
@@ -112,9 +118,6 @@ export default async function Home() {
               <h2 className="text-lg font-bold text-blue-900 flex items-center gap-2">
                 🛒 WANTED 一覧（お買い物メモ）
               </h2>
-              <p className="text-sm text-blue-700 mt-1">
-                地下の模型店など、電波が悪い場所でもすぐに見れるように全プロジェクトのWANTEDをまとめて確認できます。
-              </p>
             </div>
             <Link 
               href="/wanted" 

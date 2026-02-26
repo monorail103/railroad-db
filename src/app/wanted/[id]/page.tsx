@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import UpdateSuccessToast from "../../_components/UpdateSuccessToast";
 
 type Scale = "N" | "HO" | "PLARAIL" | "DECAL" | "PART_N" | "PART_HO" | "OTHER";
 
@@ -18,11 +19,19 @@ const scaleLabels: Record<Scale, string> = {
   OTHER: "その他",
 };
 
-export default async function WantedDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WantedDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ updated?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) return <div>ログインしてください</div>;
 
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const showUpdatedToast = resolvedSearchParams.updated === "1";
   const wantedId = resolvedParams.id;
 
   // WANTEDアイテムと紐づくプロジェクトを取得
@@ -55,17 +64,19 @@ export default async function WantedDetailPage({ params }: { params: Promise<{ i
     const scale = formData.get("scale") as Scale;
     const remarks = formData.get("remarks") as string;
     const amount = parseInt(formData.get("amount") as string, 10);
+    const storeUrl = formData.get("storeUrl") as string;
 
     if (!name || !scale || isNaN(amount)) return;
 
     await db
       .update(wanted)
-      .set({ maker: maker?.trim() || null, name, scale, remarks, amount })
+      .set({ maker: maker?.trim() || null, name, scale, remarks, amount, storeUrl })
       .where(eq(wanted.id, wantedId));
     
     revalidatePath(`/wanted/${wantedId}`);
     revalidatePath("/wanted");
     revalidatePath(`/projects/${wantedItem.projectId}`);
+    redirect(`/wanted/${wantedId}?updated=1`);
   }
 
   // WANTEDの削除
@@ -131,6 +142,7 @@ export default async function WantedDetailPage({ params }: { params: Promise<{ i
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-2xl mx-auto pb-20">
+      <UpdateSuccessToast show={showUpdatedToast} />
       <div className="mb-6 flex items-center gap-4">
         <Link href="/wanted" className="p-2 hover:bg-slate-100 rounded-full transition-colors text-xl">
           ←
