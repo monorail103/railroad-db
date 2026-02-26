@@ -107,6 +107,23 @@ export default async function Home() {
             </form>
           </section>
 
+          <section className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-blue-900 flex items-center gap-2">
+                🛒 WANTED 一覧（お買い物メモ）
+              </h2>
+              <p className="text-sm text-blue-700 mt-1">
+                地下の模型店など、電波が悪い場所でもすぐに見れるように全プロジェクトのWANTEDをまとめて確認できます。
+              </p>
+            </div>
+            <Link 
+              href="/wanted" 
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all text-center whitespace-nowrap"
+            >
+              WANTEDを見る
+            </Link>
+          </section>
+
           <section>
             <div className="flex items-baseline justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold">あなたのプロジェクト</h2>

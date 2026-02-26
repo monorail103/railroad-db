@@ -18,6 +18,12 @@ export function AppHeader() {
           <SignedIn>
             <nav className="hidden md:flex items-center gap-1">
               <Link 
+                href="/wanted" 
+                className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1"
+              >
+                🛒 WANTED
+              </Link>
+              <Link 
                 href="/friends" 
                 className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
               >
@@ -37,7 +43,13 @@ export function AppHeader() {
           </SignedOut>
           <SignedIn>
             <div className="flex items-center gap-4">
-              <div className="md:hidden">
+              <div className="md:hidden flex items-center gap-2">
+                <Link 
+                  href="/wanted" 
+                  className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+                >
+                  🛒
+                </Link>
                 <Link 
                   href="/friends" 
                   className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"

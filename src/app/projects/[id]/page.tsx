@@ -65,13 +65,20 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
   // WANTEDの追加
   async function handleAddWanted(formData: FormData) {
     "use server";
+    const maker = formData.get("maker") as string;
     const name = formData.get("name") as string;
     const scale = formData.get("scale") as Scale;
     const remarks = formData.get("remarks") as string;
 
     if (!name || !scale) return;
 
-    await db.insert(wanted).values({ projectId, name, scale, remarks });
+    await db.insert(wanted).values({ 
+      projectId, 
+      maker: maker?.trim() || null,
+      name, 
+      scale, 
+      remarks 
+    });
     revalidatePath(`/projects/${projectId}`);
   }
 
@@ -96,7 +103,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
     if (!actionProject) return;
 
     const [targetWanted] = await db
-      .select({ id: wanted.id, name: wanted.name, scale: wanted.scale })
+      .select({ id: wanted.id, maker: wanted.maker, name: wanted.name, scale: wanted.scale })
       .from(wanted)
       .where(and(eq(wanted.id, wantedId), eq(wanted.projectId, projectId)));
     if (!targetWanted) return;
@@ -104,7 +111,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
     await db.insert(items).values({
       projectId,
       type,
-      maker: maker.trim() || null,
+      maker: maker.trim() || targetWanted.maker || null,
       name: targetWanted.name,
       scale: targetWanted.scale,
     });
@@ -216,8 +223,9 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
           <h2 className="text-xl font-bold mb-4 border-b border-yellow-300 pb-2 text-yellow-800">WANTED (手配リスト)</h2>
           
           <form action={handleAddWanted} className="mb-6 flex flex-col gap-2">
+            {/* 1行目: スケール + メーカー + 品名 */}
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
-              <select name="scale" className="border border-yellow-300 p-2 rounded bg-white text-sm w-full sm:w-auto" required>
+              <select name="scale" className="border border-yellow-300 p-2 rounded bg-white w-full sm:w-auto" required>
                 <option value="N">N</option>
                 <option value="HO">HO</option>
                 <option value="PLARAIL">プラレール</option>
@@ -228,18 +236,25 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
               </select>
               <input
                 type="text"
+                name="maker"
+                placeholder="メーカー (例: KATO)"
+                className="border border-yellow-300 p-2 rounded w-full sm:w-44"
+              />
+              <input
+                type="text"
                 name="name"
                 placeholder="探している物 (例: モハ103)"
                 className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0"
                 required
               />
             </div>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
-              <input
-                type="text"
+
+            {/* 2行目: 備考（大きめ） + 追加 */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <textarea
                 name="remarks"
                 placeholder="備考 (例: 1500円以下なら即買い)"
-                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 text-sm"
+                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 h-24 resize-y"
               />
               <button
                 type="submit"
@@ -256,10 +271,15 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                 <div className="flex flex-col gap-2">
                   <div>
                     <div className="flex items-start gap-2 min-w-0">
-                      <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded">
+                      <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded mt-0.5 shrink-0">
                         {scaleLabels[w.scale as Scale] ?? w.scale}
                       </span>
-                      <div className="font-semibold text-gray-900 break-words min-w-0 leading-snug">{w.name}</div>
+                      <div className="font-semibold text-gray-900 break-words min-w-0 leading-snug">
+                        {w.maker && <span className="text-xs text-gray-500 block mb-0.5">{w.maker}</span>}
+                        <Link href={`/wanted/${w.id}`} className="hover:text-blue-600 hover:underline">
+                          {w.name}
+                        </Link>
+                      </div>
                     </div>
                     {w.remarks && (
                       <div className="text-sm text-gray-600 mt-1 break-words">📝 {w.remarks}</div>

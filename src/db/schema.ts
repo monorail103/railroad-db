@@ -51,7 +51,7 @@ export const items = pgTable("items", {
   name: text("name").notNull(), // 任意の名前
   remarks: text("remarks"), // DBの枠で表現できないメモ
   scale: itemScale("scale").notNull().default("N"),
-  amount: integer("amount").notNull().default(1), // 必要な数
+  amount: integer("amount").notNull().default(1), // 所有数
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -64,6 +64,7 @@ export const wanted = pgTable("wanted", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => projects.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  maker: text("maker"), // "KATO", "TOMIX" など
   name: text("name").notNull(),
   scale: itemScale("scale").notNull().default("N"), // Nゲージ、HOゲージなど
   remarks: text("remarks"), // DBの枠で表現できないメモ
