@@ -6,6 +6,18 @@ import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+type Scale = "N" | "HO" | "PLARAIL" | "DECAL" | "PART_N" | "PART_HO" | "OTHER";
+
+const scaleLabels: Record<Scale, string> = {
+  N: "Nゲージ",
+  HO: "HOゲージ",
+  PLARAIL: "プラレール",
+  DECAL: "インレタ/シール",
+  PART_N: "Nパーツ",
+  PART_HO: "HOパーツ",
+  OTHER: "その他",
+};
+
 export default async function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
   if (!userId) return <div>ログインしてください</div>;
@@ -34,10 +46,19 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
     const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
     const maker = formData.get("maker") as string;
     const name = formData.get("name") as string;
+    const scale = formData.get("scale") as Scale;
+    const remarks = formData.get("remarks") as string;
 
-    if (!name || !type) return;
+    if (!name || !type || !scale) return;
 
-    await db.insert(items).values({ projectId, type, maker, name });
+    await db.insert(items).values({
+      projectId,
+      type,
+      maker: maker?.trim() || null,
+      name,
+      remarks: remarks?.trim() || null,
+      scale,
+    });
     revalidatePath(`/projects/${projectId}`);
   }
 
@@ -45,11 +66,12 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
   async function handleAddWanted(formData: FormData) {
     "use server";
     const name = formData.get("name") as string;
+    const scale = formData.get("scale") as Scale;
     const remarks = formData.get("remarks") as string;
 
-    if (!name) return;
+    if (!name || !scale) return;
 
-    await db.insert(wanted).values({ projectId, name, remarks });
+    await db.insert(wanted).values({ projectId, name, scale, remarks });
     revalidatePath(`/projects/${projectId}`);
   }
 
@@ -74,7 +96,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
     if (!actionProject) return;
 
     const [targetWanted] = await db
-      .select({ id: wanted.id, name: wanted.name })
+      .select({ id: wanted.id, name: wanted.name, scale: wanted.scale })
       .from(wanted)
       .where(and(eq(wanted.id, wantedId), eq(wanted.projectId, projectId)));
     if (!targetWanted) return;
@@ -84,6 +106,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
       type,
       maker: maker.trim() || null,
       name: targetWanted.name,
+      scale: targetWanted.scale,
     });
 
     await db
@@ -95,7 +118,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
 
   // --- 画面UI ---
   return (
-    <main className="min-h-screen p-8 max-w-4xl mx-auto">
+    <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto">
       <div className="mb-6">
         <Link href="/" className="text-blue-600 hover:underline">← 一覧に戻る</Link>
       </div>
@@ -112,41 +135,14 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
           <h2 className="text-xl font-bold mb-4 border-b pb-2">手持ちの車両・パーツ</h2>
           
           <form action={handleAddItem} className="mb-6 flex flex-col gap-2">
-            <div className="flex gap-2">
-              <select name="type" className="border p-2 rounded" required>
+            {/* 1行目: 種別 + スケール */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+              <select name="type" className="border p-2 rounded w-full sm:w-auto" required>
                 <option value="SINGLE_CAR">単品車両</option>
                 <option value="SET">セット</option>
                 <option value="PART">パーツ</option>
               </select>
-              <input type="text" name="maker" placeholder="メーカー (例: KATO)" className="border p-2 rounded w-1/3" />
-            </div>
-            <div className="flex gap-2">
-              <input type="text" name="name" placeholder="品名 (例: モハ102-xxx)" className="border p-2 rounded flex-1" required />
-              <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">追加</button>
-            </div>
-          </form>
-
-          <ul className="space-y-2">
-            {projectItems.map(item => (
-              <li key={item.id} className="p-2 border-b flex justify-between items-center text-sm">
-                <div>
-                  <span className="bg-gray-200 text-xs px-2 py-1 rounded mr-2">{item.type}</span>
-                  <span className="text-gray-600 mr-2">[{item.maker}]</span>
-                  <span className="font-medium">{item.name}</span>
-                </div>
-              </li>
-            ))}
-            {projectItems.length === 0 && <p className="text-gray-500 text-sm">まだ登録されていません。</p>}
-          </ul>
-        </section>
-
-        {/* 右側：WANTEDエリア */}
-        <section className="bg-yellow-50 p-6 rounded-lg shadow-sm border border-yellow-200">
-          <h2 className="text-xl font-bold mb-4 border-b border-yellow-300 pb-2 text-yellow-800">WANTED (手配リスト)</h2>
-          
-          <form action={handleAddWanted} className="mb-6 flex flex-col gap-2">
-            <div className="flex gap-2">
-              <select name="scale" className="border border-yellow-300 p-2 rounded bg-white text-sm" required>
+              <select name="scale" className="border p-2 rounded w-full sm:w-auto" defaultValue="N" required>
                 <option value="N">N</option>
                 <option value="HO">HO</option>
                 <option value="PLARAIL">プラレール</option>
@@ -155,27 +151,130 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                 <option value="PART_HO">HOパーツ</option>
                 <option value="OTHER">その他</option>
               </select>
-              <input type="text" name="name" placeholder="探している物 (例: モハ103)" className="border border-yellow-300 p-2 rounded flex-1" required />
             </div>
-            <div className="flex gap-2">
-              <input type="text" name="remarks" placeholder="備考 (例: 1500円以下なら即買い)" className="border border-yellow-300 p-2 rounded flex-1 text-sm" />
-              <button type="submit" className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded font-bold">追加</button>
+
+            {/* 2行目: メーカー + 品名 */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+              <input
+                type="text"
+                name="maker"
+                placeholder="メーカー (例: KATO)"
+                className="border p-2 rounded w-full sm:w-44"
+              />
+              <input
+                type="text"
+                name="name"
+                placeholder="品名 (例: モハ102-xxx)"
+                className="border p-2 rounded w-full sm:flex-1 min-w-0"
+                required
+              />
+            </div>
+
+            {/* 3行目: 備考（大きめ） + 追加 */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <textarea
+                name="remarks"
+                placeholder="備考 (例: 1500円以下なら即買い)"
+                className="border p-2 rounded w-full sm:flex-1 min-w-0 h-24 resize-y"
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto whitespace-nowrap"
+              >
+                追加
+              </button>
             </div>
           </form>
 
-          <ul className="space-y-3">
+          <ul className="space-y-2 list-none">
+            {projectItems.map(item => (
+              <li key={item.id} className="p-2 border-b text-sm">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="bg-gray-200 text-xs px-2 py-1 rounded whitespace-nowrap">
+                      {item.type}
+                    </span>
+                    <span className="bg-gray-100 text-xs px-2 py-1 rounded whitespace-nowrap">
+                      {scaleLabels[item.scale as Scale] ?? item.scale}
+                    </span>
+                  </div>
+                  <div className="min-w-0 break-words">
+                    {item.maker && <span className="text-gray-600 mr-2">[{item.maker}]</span>}
+                    <span className="font-medium">{item.name}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+            {projectItems.length === 0 && (
+              <li className="text-gray-500 text-sm">まだ登録されていません。</li>
+            )}
+          </ul>
+        </section>
+
+        {/* 右側：WANTEDエリア */}
+        <section className="bg-yellow-50 p-6 rounded-lg shadow-sm border border-yellow-200">
+          <h2 className="text-xl font-bold mb-4 border-b border-yellow-300 pb-2 text-yellow-800">WANTED (手配リスト)</h2>
+          
+          <form action={handleAddWanted} className="mb-6 flex flex-col gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+              <select name="scale" className="border border-yellow-300 p-2 rounded bg-white text-sm w-full sm:w-auto" required>
+                <option value="N">N</option>
+                <option value="HO">HO</option>
+                <option value="PLARAIL">プラレール</option>
+                <option value="DECAL">インレタ/シール</option>
+                <option value="PART_N">Nパーツ</option>
+                <option value="PART_HO">HOパーツ</option>
+                <option value="OTHER">その他</option>
+              </select>
+              <input
+                type="text"
+                name="name"
+                placeholder="探している物 (例: モハ103)"
+                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0"
+                required
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+              <input
+                type="text"
+                name="remarks"
+                placeholder="備考 (例: 1500円以下なら即買い)"
+                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 text-sm"
+              />
+              <button
+                type="submit"
+                className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded font-bold w-full sm:w-auto whitespace-nowrap"
+              >
+                追加
+              </button>
+            </div>
+          </form>
+
+          <ul className="space-y-3 list-none">
             {projectWanted.map(w => (
               <li key={w.id} className="p-3 bg-white border border-yellow-300 rounded shadow-sm">
                 <div className="flex flex-col gap-2">
                   <div>
-                    <div className="font-bold text-red-600">{w.name}</div>
-                    {w.remarks && <div className="text-sm text-gray-600 mt-1">📝 {w.remarks}</div>}
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded">
+                        {scaleLabels[w.scale as Scale] ?? w.scale}
+                      </span>
+                      <div className="font-semibold text-gray-900 break-words min-w-0 leading-snug">{w.name}</div>
+                    </div>
+                    {w.remarks && (
+                      <div className="text-sm text-gray-600 mt-1 break-words">📝 {w.remarks}</div>
+                    )}
                   </div>
 
                   <form action={handleMoveWantedToItem} className="flex flex-col gap-2">
                     <input type="hidden" name="wantedId" value={w.id} />
-                    <div className="flex gap-2">
-                      <select name="type" className="border border-yellow-300 p-2 rounded text-sm" defaultValue="SINGLE_CAR" required>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <select
+                        name="type"
+                        className="border border-yellow-300 p-2 rounded text-sm w-full sm:w-auto"
+                        defaultValue="SINGLE_CAR"
+                        required
+                      >
                         <option value="SINGLE_CAR">単品車両</option>
                         <option value="SET">セット</option>
                         <option value="PART">パーツ</option>
@@ -184,9 +283,12 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                         type="text"
                         name="maker"
                         placeholder="メーカー (任意)"
-                        className="border border-yellow-300 p-2 rounded flex-1 text-sm"
+                        className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 text-sm"
                       />
-                      <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">
+                      <button
+                        type="submit"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm w-full sm:w-auto whitespace-nowrap"
+                      >
                         所有品へ移行
                       </button>
                     </div>
@@ -194,7 +296,9 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                 </div>
               </li>
             ))}
-            {projectWanted.length === 0 && <p className="text-gray-500 text-sm">現在探しているものはありません。</p>}
+            {projectWanted.length === 0 && (
+              <li className="text-gray-500 text-sm">現在探しているものはありません。</li>
+            )}
           </ul>
         </section>
 

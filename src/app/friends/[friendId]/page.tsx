@@ -67,7 +67,7 @@ export default async function FriendWantedPage({
   };
 
   return (
-    <main className="min-h-screen p-8 max-w-3xl mx-auto">
+    <main className="min-h-screen p-4 sm:p-8 max-w-3xl mx-auto">
       <div className="mb-6">
         <Link href="/friends" className="text-blue-600 hover:underline">← フレンド一覧に戻る</Link>
       </div>
@@ -105,18 +105,18 @@ export default async function FriendWantedPage({
           filteredList.map((item) => (
             <div key={item.id} className="bg-white border-l-4 border-yellow-400 p-4 rounded shadow-sm">
               <div className="flex justify-between items-start">
-                <div>
+                <div className="min-w-0">
                   <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded mr-2">
                     {scaleLabels[item.scale]}
                   </span>
-                  <span className="font-bold text-lg">{item.name}</span>
+                  <span className="font-bold text-lg break-words">{item.name}</span>
                 </div>
               </div>
               <div className="mt-2 text-sm text-gray-600">
                 📁 プロジェクト: <span className="font-medium">{item.projectName}</span>
               </div>
               {item.remarks && (
-                <div className="mt-2 text-sm bg-gray-50 p-2 rounded text-gray-700 border">
+                <div className="mt-2 text-sm bg-gray-50 p-2 rounded text-gray-700 border break-words">
                   📝 {item.remarks}
                 </div>
               )}

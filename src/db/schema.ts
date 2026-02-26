@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const projectStatus = pgEnum("project_status", [
   "IN_PROGRESS",
@@ -49,7 +49,9 @@ export const items = pgTable("items", {
   price: text("price"), // 価格
   maker: text("maker"), // "KATO", "TOMIX" など
   name: text("name").notNull(), // 任意の名前
+  remarks: text("remarks"), // DBの枠で表現できないメモ
   scale: itemScale("scale").notNull().default("N"),
+  amount: integer("amount").notNull().default(1), // 必要な数
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -65,6 +67,7 @@ export const wanted = pgTable("wanted", {
   name: text("name").notNull(),
   scale: itemScale("scale").notNull().default("N"), // Nゲージ、HOゲージなど
   remarks: text("remarks"), // DBの枠で表現できないメモ
+  amount: integer("amount").notNull().default(1), // 欲しい数
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

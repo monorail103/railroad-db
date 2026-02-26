@@ -1,4 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs'
+import { jaJP } from '@clerk/localizations';
+import { AppHeader } from "./_components/AppHeader";
 import './globals.css'
 
 export default function RootLayout({
@@ -7,9 +9,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider localization={jaJP}>
       <html lang="ja">
-        <body>{children}</body>
+        <body>
+          <AppHeader />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   )
