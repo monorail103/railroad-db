@@ -52,6 +52,7 @@ export const items = pgTable("items", {
   remarks: text("remarks"), // DBの枠で表現できないメモ
   scale: itemScale("scale").notNull().default("N"),
   amount: integer("amount").notNull().default(1), // 所有数
+  photoUrl: text("photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -69,6 +70,8 @@ export const wanted = pgTable("wanted", {
   scale: itemScale("scale").notNull().default("N"), // Nゲージ、HOゲージなど
   remarks: text("remarks"), // DBの枠で表現できないメモ
   amount: integer("amount").notNull().default(1), // 欲しい数
+  photoUrl: text("photo_url"),
+  storeUrl: text("store_url"), // 購入予定の店舗URL（任意）
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

@@ -69,6 +69,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
     const name = formData.get("name") as string;
     const scale = formData.get("scale") as Scale;
     const remarks = formData.get("remarks") as string;
+    const storeUrl = formData.get("storeUrl") as string;
 
     if (!name || !scale) return;
 
@@ -77,7 +78,8 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
       maker: maker?.trim() || null,
       name, 
       scale, 
-      remarks 
+      remarks,
+      storeUrl: storeUrl?.trim() || null,
     });
     revalidatePath(`/projects/${projectId}`);
   }
@@ -249,12 +251,22 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
               />
             </div>
 
-            {/* 2行目: 備考（大きめ） + 追加 */}
+            {/* 2行目: 商品URL */}
+            <div>
+              <input
+                type="url"
+                name="storeUrl"
+                className="border border-yellow-300 p-2 rounded w-full"
+                placeholder="商品URL"
+              />
+            </div>
+
+            {/* 3行目: 備考（大きめ） + 追加 */}
             <div className="flex flex-col sm:flex-row gap-2">
               <textarea
                 name="remarks"
-                placeholder="備考 (例: 1500円以下なら即買い)"
-                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 h-24 resize-y"
+                placeholder="備考 (例: 旧製品を優先的に探す)"
+                className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 h-11 resize-y"
               />
               <button
                 type="submit"

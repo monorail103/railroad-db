@@ -1,8 +1,9 @@
 import { db } from "@/db";
-import { projects, wanted } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { projects, wanted, items } from "@/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 
 export default async function WantedPage() {
   const { userId } = await auth();
@@ -23,6 +24,8 @@ export default async function WantedPage() {
       scale: wanted.scale,
       remarks: wanted.remarks,
       amount: wanted.amount,
+      photoUrl: wanted.photoUrl,
+      storeUrl: wanted.storeUrl,
       projectId: projects.id,
       projectName: projects.name,
     })
@@ -30,6 +33,52 @@ export default async function WantedPage() {
     .innerJoin(projects, eq(wanted.projectId, projects.id))
     .where(eq(projects.userId, userId))
     .orderBy(desc(wanted.createdAt));
+
+  async function handleQuickPurchase(formData: FormData) {
+    "use server";
+
+    const { userId: actionUserId } = await auth();
+    if (!actionUserId) return;
+
+    const wantedId = formData.get("wantedId") as string;
+    const type = (formData.get("type") as "SET" | "SINGLE_CAR" | "PART") || "SINGLE_CAR";
+    const price = ((formData.get("price") as string) ?? "").trim();
+
+    if (!wantedId) return;
+
+    const [targetWanted] = await db
+      .select({
+        id: wanted.id,
+        projectId: wanted.projectId,
+        maker: wanted.maker,
+        name: wanted.name,
+        scale: wanted.scale,
+        amount: wanted.amount,
+        remarks: wanted.remarks,
+      })
+      .from(wanted)
+      .innerJoin(projects, eq(wanted.projectId, projects.id))
+      .where(and(eq(wanted.id, wantedId), eq(projects.userId, actionUserId)));
+
+    if (!targetWanted) return;
+
+    await db.insert(items).values({
+      projectId: targetWanted.projectId,
+      type,
+      maker: targetWanted.maker,
+      name: targetWanted.name,
+      scale: targetWanted.scale,
+      amount: targetWanted.amount,
+      remarks: targetWanted.remarks,
+      price: price || null,
+    });
+
+    await db.delete(wanted).where(eq(wanted.id, wantedId));
+
+    revalidatePath("/wanted");
+    revalidatePath(`/projects/${targetWanted.projectId}`);
+    revalidatePath(`/wanted/${wantedId}`);
+  }
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto pb-20">
@@ -64,39 +113,92 @@ export default async function WantedPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {myWantedList.map((item) => (
-            <Link 
-              key={item.id} 
-              href={`/wanted/${item.id}`}
-              className="block border rounded-xl p-4 bg-white shadow-sm hover:shadow-md hover:border-blue-300 transition-all group"
+            <div
+              key={item.id}
+              className="border rounded-xl p-4 bg-white shadow-sm hover:shadow-md hover:border-blue-300 transition-all group"
             >
-              <div className="flex justify-between items-start mb-2">
-                <div className="min-w-0">
-                  {item.maker && (
-                    <div className="text-xs text-slate-500 mb-0.5">{item.maker}</div>
-                  )}
-                  <h2 className="font-bold text-lg text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                    {item.name}
-                  </h2>
-                </div>
-                <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded font-medium whitespace-nowrap ml-2 shrink-0">
-                  {item.scale}
-                </span>
-              </div>
-              
-              <div className="text-sm text-slate-500 mb-3 flex items-center gap-1">
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">プロジェクト</span>
-                <span className="truncate">{item.projectName}</span>
-              </div>
+              <Link href={`/wanted/${item.id}`} className="block">
+                {item.photoUrl && (
+                  <div className="mb-3 rounded-lg overflow-hidden bg-slate-100 h-40">
+                    <img
+                      src={item.photoUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
 
-              <div className="flex justify-between items-end mt-auto pt-2 border-t border-slate-100">
-                <div className="text-sm text-slate-600 line-clamp-1 flex-1 mr-4">
-                  {item.remarks ? item.remarks : <span className="text-slate-400 italic">メモなし</span>}
+                <div className="flex justify-between items-start mb-2">
+                  <div className="min-w-0">
+                    {item.maker && (
+                      <div className="text-xs text-slate-500 mb-0.5">{item.maker}</div>
+                    )}
+                    <h2 className="font-bold text-lg text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                      {item.name}
+                    </h2>
+                  </div>
+                  <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded font-medium whitespace-nowrap ml-2 shrink-0">
+                    {item.scale}
+                  </span>
                 </div>
-                <div className="text-sm font-medium bg-slate-50 px-3 py-1 rounded-full whitespace-nowrap">
-                  数量: <span className="text-lg font-bold text-slate-800">{item.amount}</span>
+
+                <div className="text-sm text-slate-500 mb-3 flex items-center gap-1">
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">プロジェクト</span>
+                  <span className="truncate">{item.projectName}</span>
                 </div>
-              </div>
-            </Link>
+
+                <div className="flex justify-between items-end mt-auto pt-2 border-t border-slate-100">
+                  <div className="text-sm text-slate-600 line-clamp-1 flex-1 mr-4">
+                    {item.remarks ? item.remarks : <span className="text-slate-400 italic">メモなし</span>}
+                  </div>
+                  <div className="text-sm font-medium bg-slate-50 px-3 py-1 rounded-full whitespace-nowrap">
+                    数量: <span className="text-lg font-bold text-slate-800">{item.amount}</span>
+                  </div>
+                </div>
+              </Link>
+
+              {item.storeUrl && (
+                <div className="mt-3">
+                  <a
+                    href={item.storeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-700 underline"
+                  >
+                    ストアーURLを開く
+                  </a>
+                </div>
+              )}
+
+              <form
+                action={handleQuickPurchase}
+                className="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row gap-2"
+              >
+                <input type="hidden" name="wantedId" value={item.id} />
+                <select
+                  name="type"
+                  defaultValue="SINGLE_CAR"
+                  className="border border-emerald-200 p-2 rounded text-sm bg-white w-full sm:w-auto"
+                >
+                  <option value="SINGLE_CAR">単品車両</option>
+                  <option value="SET">セット</option>
+                  <option value="PART">パーツ</option>
+                </select>
+                <input
+                  type="text"
+                  name="price"
+                  placeholder="購入価格(任意)"
+                  className="border border-emerald-200 p-2 rounded text-sm w-full sm:flex-1 min-w-0"
+                />
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded text-sm font-medium whitespace-nowrap"
+                >
+                  購入登録
+                </button>
+              </form>
+            </div>
           ))}
         </div>
       )}

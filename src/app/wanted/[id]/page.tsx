@@ -34,6 +34,8 @@ export default async function WantedDetailPage({ params }: { params: Promise<{ i
       scale: wanted.scale,
       remarks: wanted.remarks,
       amount: wanted.amount,
+      photoUrl: wanted.photoUrl,
+      storeUrl: wanted.storeUrl,
       projectId: wanted.projectId,
       projectName: projects.name,
     })
@@ -90,6 +92,34 @@ export default async function WantedDetailPage({ params }: { params: Promise<{ i
       name: wantedItem.name,
       scale: wantedItem.scale as Scale,
       amount: wantedItem.amount,
+    });
+
+    await db.delete(wanted).where(eq(wanted.id, wantedId));
+
+    revalidatePath("/wanted");
+    revalidatePath(`/projects/${wantedItem.projectId}`);
+    redirect(`/projects/${wantedItem.projectId}`);
+  }
+
+  // WANTEDを購入登録して所有品へ移行
+  async function handleRegisterPurchase(formData: FormData) {
+    "use server";
+    const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
+    const maker = (formData.get("maker") as string) ?? "";
+    const price = (formData.get("price") as string) ?? "";
+    const remarks = (formData.get("remarks") as string) ?? "";
+
+    if (!type) return;
+
+    await db.insert(items).values({
+      projectId: wantedItem.projectId,
+      type,
+      maker: maker.trim() || wantedItem.maker || null,
+      name: wantedItem.name,
+      scale: wantedItem.scale as Scale,
+      amount: wantedItem.amount,
+      price: price.trim() || null,
+      remarks: remarks.trim() || wantedItem.remarks || null,
     });
 
     await db.delete(wanted).where(eq(wanted.id, wantedId));
@@ -178,8 +208,63 @@ export default async function WantedDetailPage({ params }: { params: Promise<{ i
               </button>
             </div>
           </form>
+
+          <form action={handleRegisterPurchase} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 mt-4">
+            <p className="text-sm text-emerald-800 mb-3">
+              価格を含めて、購入済みとしてすぐに登録できます。
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <select
+                name="type"
+                className="border border-emerald-200 p-2 rounded text-sm w-full bg-white"
+                defaultValue="SINGLE_CAR"
+                required
+              >
+                <option value="SINGLE_CAR">単品車両</option>
+                <option value="SET">セット</option>
+                <option value="PART">パーツ</option>
+              </select>
+              <input
+                type="text"
+                name="maker"
+                placeholder="メーカー (任意)"
+                defaultValue={wantedItem.maker || ""}
+                className="border border-emerald-200 p-2 rounded w-full text-sm bg-white"
+              />
+              <input
+                type="text"
+                name="price"
+                placeholder="購入価格 (例: 1500円)"
+                className="border border-emerald-200 p-2 rounded w-full text-sm bg-white"
+              />
+              <input
+                type="text"
+                name="remarks"
+                placeholder="購入メモ (任意)"
+                className="border border-emerald-200 p-2 rounded w-full text-sm bg-white"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium w-full sm:w-auto whitespace-nowrap transition-colors shadow-sm"
+            >
+              購入登録して所有品へ移行
+            </button>
+          </form>
         </div>
       </div>
+
+      {wantedItem.photoUrl && (
+        <div className="mb-8">
+          <div className="bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+            <img
+              src={wantedItem.photoUrl}
+              alt={wantedItem.name}
+              className="w-full h-auto object-cover"
+            />
+          </div>
+        </div>
+      )}
 
       {/* 編集フォーム */}
       <div className="bg-white border rounded-xl p-6 shadow-sm mb-8">
@@ -234,6 +319,16 @@ export default async function WantedDetailPage({ params }: { params: Promise<{ i
             </div>
           </div>
 
+          <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">購入予定の店舗URL</label>
+                <input
+                  type="url"
+                  name="storeUrl"
+                  defaultValue={wantedItem.storeUrl || ""}
+                  className="border p-2 rounded w-full"
+                  placeholder="例: https://www.example.com/item/12345"
+                />
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">備考</label>
             <textarea

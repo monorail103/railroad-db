@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { profiles, friendships, wanted, projects } from "@/db/schema";
+import { profiles, friendships, wanted, projects, items } from "@/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -55,7 +55,39 @@ export default async function FriendWantedPage({
 
   const friendWantedList = await friendWantedQuery;
 
-  // 4. TypeScript側でスケール絞り込み（DBクエリで絞り込んでもOKですが、今回はシンプルに配列をフィルタ）
+  // 4. フレンドのプロジェクト一覧と紐づく所有品（items）を取得
+  const friendProjects = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      status: projects.status,
+    })
+    .from(projects)
+    .where(eq(projects.userId, friendId));
+
+  const friendItems = await db
+    .select({
+      id: items.id,
+      projectId: items.projectId,
+      type: items.type,
+      maker: items.maker,
+      name: items.name,
+      scale: items.scale,
+      amount: items.amount,
+      remarks: items.remarks,
+    })
+    .from(items)
+    .innerJoin(projects, eq(items.projectId, projects.id))
+    .where(eq(projects.userId, friendId));
+
+  const itemsByProjectId = new Map<string, Array<(typeof friendItems)[number]>>();
+  for (const item of friendItems) {
+    const current = itemsByProjectId.get(item.projectId) ?? [];
+    current.push(item);
+    itemsByProjectId.set(item.projectId, current);
+  }
+
+  // 5. TypeScript側でスケール絞り込み（DBクエリで絞り込んでもOKですが、今回はシンプルに配列をフィルタ）
   const filteredList = currentScale === "ALL" 
     ? friendWantedList 
     : friendWantedList.filter(w => w.scale === currentScale);
@@ -124,6 +156,63 @@ export default async function FriendWantedPage({
           ))
         )}
       </div>
+
+      {/* プロジェクトと紐づく所有品（items）一覧 */}
+      <section className="mt-10">
+        <header className="mb-4 border-b pb-2">
+          <h2 className="text-xl font-bold">📁 プロジェクト & 所有品</h2>
+        </header>
+
+        {friendProjects.length === 0 ? (
+          <p className="text-gray-500 bg-gray-50 p-6 rounded text-center">
+            プロジェクトはまだ登録されていません。
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {friendProjects.map((project) => {
+              const projectItems = itemsByProjectId.get(project.id) ?? [];
+
+              return (
+                <div key={project.id} className="bg-white border rounded p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <span className="font-bold text-lg">{project.name}</span>
+                    <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                      {project.status}
+                    </span>
+                  </div>
+
+                  {projectItems.length === 0 ? (
+                    <p className="text-sm text-gray-500">このプロジェクトに所有品はまだありません。</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {projectItems.map((item) => (
+                        <li key={item.id} className="border-l-4 border-blue-200 bg-blue-50/40 p-3 rounded">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs bg-gray-200 px-2 py-1 rounded">{item.type}</span>
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              {scaleLabels[item.scale] ?? item.scale}
+                            </span>
+                            <span className="text-xs bg-white border px-2 py-1 rounded">数量: {item.amount}</span>
+                          </div>
+                          <div className="mt-1 break-words">
+                            {item.maker && <span className="text-gray-600 mr-2">[{item.maker}]</span>}
+                            <span className="font-medium">{item.name}</span>
+                          </div>
+                          {item.remarks && (
+                            <div className="mt-2 text-sm bg-white border p-2 rounded text-gray-700 break-words">
+                              📝 {item.remarks}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </main>
   );
 }
