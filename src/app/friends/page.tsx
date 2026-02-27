@@ -4,6 +4,7 @@ import { profiles, friendships } from "@/db/schema";
 import { eq, or, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { friend } from "./actions/friend";
 import Link from "next/link";
 
 // ランダムな8桁のフレンドコードを生成する関数
@@ -176,7 +177,7 @@ export default async function FriendsPage() {
                                     href={`/friends/${friend.friendId}`}
                                     className="text-sm bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded hover:bg-blue-100 transition"
                                 >
-                                    WANTEDを見る
+                                    コレクションを見る
                                 </Link>
                             </li>
                         ))}

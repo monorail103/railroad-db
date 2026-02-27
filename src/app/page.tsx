@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { projects } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { createProject } from "./actions/project";
 import Link from "next/link";
 
 export default async function Home() {
@@ -34,32 +34,6 @@ export default async function Home() {
     },
     { total: 0, inProgress: 0, completed: 0, archived: 0, unknown: 0 }
   );
-
-  // 3. フォーム送信時に動くサーバーアクション（API不要で直接DB書き込み）
-  async function createProject(formData: FormData) {
-    "use server";
-    const { userId } = await auth();
-    if (!userId) return;
-
-    const name = formData.get("projectName") as string;
-    if (!name) return;
-
-    // DBに新規プロジェクトをインサート
-
-    try {
-      await db.insert(projects).values({
-        userId,
-        name,
-        status: "IN_PROGRESS",
-      });
-    } catch (error) {
-      console.error("プロジェクトの作成に失敗:", error);
-      return;
-    }
-
-    // 画面を最新状態に更新
-    revalidatePath("/");
-  }
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto">
