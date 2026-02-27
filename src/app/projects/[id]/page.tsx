@@ -2,21 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { projects, items, wanted } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
+import { handleAddItem, handleAddWanted, handleMoveWantedToItem } from "@/app/actions/project";
 import Link from "next/link";
-
-type Scale = "N" | "HO" | "PLARAIL" | "DECAL" | "PART_N" | "PART_HO" | "OTHER";
-
-const scaleLabels: Record<Scale, string> = {
-  N: "Nゲージ",
-  HO: "HOゲージ",
-  PLARAIL: "プラレール",
-  DECAL: "インレタ/シール",
-  PART_N: "Nパーツ",
-  PART_HO: "HOパーツ",
-  OTHER: "その他",
-};
+import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
 
 export default async function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
@@ -38,93 +27,6 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
   const projectItems = await db.select().from(items).where(eq(items.projectId, projectId));
   const projectWanted = await db.select().from(wanted).where(eq(wanted.projectId, projectId));
 
-  // --- Server Actions（DB書き込み処理） ---
-
-  // 所有品の追加
-  async function handleAddItem(formData: FormData) {
-    "use server";
-    const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
-    const maker = formData.get("maker") as string;
-    const name = formData.get("name") as string;
-    const scale = formData.get("scale") as Scale;
-    const remarks = formData.get("remarks") as string;
-
-    if (!name || !type || !scale) return;
-
-    await db.insert(items).values({
-      projectId,
-      type,
-      maker: maker?.trim() || null,
-      name,
-      remarks: remarks?.trim() || null,
-      scale,
-    });
-    revalidatePath(`/projects/${projectId}`);
-  }
-
-  // WANTEDの追加
-  async function handleAddWanted(formData: FormData) {
-    "use server";
-    const maker = formData.get("maker") as string;
-    const name = formData.get("name") as string;
-    const scale = formData.get("scale") as Scale;
-    const remarks = formData.get("remarks") as string;
-    const storeUrl = formData.get("storeUrl") as string;
-
-    if (!name || !scale) return;
-
-    await db.insert(wanted).values({ 
-      projectId, 
-      maker: maker?.trim() || null,
-      name, 
-      scale, 
-      remarks,
-      storeUrl: storeUrl?.trim() || null,
-    });
-    revalidatePath(`/projects/${projectId}`);
-  }
-
-  // WANTED → 所有品（items）へ移行
-  async function handleMoveWantedToItem(formData: FormData) {
-    "use server";
-
-    const { userId: actionUserId } = await auth();
-    if (!actionUserId) return;
-
-    const wantedId = formData.get("wantedId") as string;
-    const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
-    const maker = (formData.get("maker") as string) ?? "";
-
-    if (!wantedId || !type) return;
-
-    // 他人のプロジェクトに対する操作防止
-    const [actionProject] = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.userId, actionUserId)));
-    if (!actionProject) return;
-
-    const [targetWanted] = await db
-      .select({ id: wanted.id, maker: wanted.maker, name: wanted.name, scale: wanted.scale })
-      .from(wanted)
-      .where(and(eq(wanted.id, wantedId), eq(wanted.projectId, projectId)));
-    if (!targetWanted) return;
-
-    await db.insert(items).values({
-      projectId,
-      type,
-      maker: maker.trim() || targetWanted.maker || null,
-      name: targetWanted.name,
-      scale: targetWanted.scale,
-    });
-
-    await db
-      .delete(wanted)
-      .where(and(eq(wanted.id, wantedId), eq(wanted.projectId, projectId)));
-
-    revalidatePath(`/projects/${projectId}`);
-  }
-
   // --- 画面UI ---
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto">
@@ -143,7 +45,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
         <section className="bg-white p-6 rounded-lg shadow-sm border">
           <h2 className="text-xl font-bold mb-4 border-b pb-2">手持ちの車両・パーツ</h2>    
           
-          <form action={handleAddItem} className="mb-6 flex flex-col gap-2">
+          <form action={(formData) => handleAddItem(projectId, formData)} className="mb-6 flex flex-col gap-2">
             {/* 1行目: 種別 + スケール */}
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
               <select name="type" className="border p-2 rounded w-full sm:w-auto" required>
@@ -152,13 +54,11 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                 <option value="PART">パーツ</option>
               </select>
               <select name="scale" className="border p-2 rounded w-full sm:w-auto" defaultValue="N" required>
-                <option value="N">N</option>
-                <option value="HO">HO</option>
-                <option value="PLARAIL">プラレール</option>
-                <option value="DECAL">インレタ/シール</option>
-                <option value="PART_N">Nパーツ</option>
-                <option value="PART_HO">HOパーツ</option>
-                <option value="OTHER">その他</option>
+                {ITEM_SCALE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -204,7 +104,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                       {item.type}
                     </span>
                     <span className="bg-gray-100 text-xs px-2 py-1 rounded whitespace-nowrap">
-                      {scaleLabels[item.scale as Scale] ?? item.scale}
+                      {ITEM_SCALE_LABELS[item.scale as Scale] ?? item.scale}
                     </span>
                   </div>
                   <div className="min-w-0 break-words">
@@ -226,17 +126,15 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
         <section className="bg-yellow-50 p-6 rounded-lg shadow-sm border border-yellow-200">
           <h2 className="text-xl font-bold mb-4 border-b border-yellow-300 pb-2 text-yellow-800">WANTED (手配リスト)</h2>
           
-          <form action={handleAddWanted} className="mb-6 flex flex-col gap-2">
+          <form action={(formData) => handleAddWanted(projectId, formData)} className="mb-6 flex flex-col gap-2">
             {/* 1行目: スケール + メーカー + 品名 */}
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
               <select name="scale" className="border border-yellow-300 p-2 rounded bg-white w-full sm:w-auto" required>
-                <option value="N">N</option>
-                <option value="HO">HO</option>
-                <option value="PLARAIL">プラレール</option>
-                <option value="DECAL">インレタ/シール</option>
-                <option value="PART_N">Nパーツ</option>
-                <option value="PART_HO">HOパーツ</option>
-                <option value="OTHER">その他</option>
+                {ITEM_SCALE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
               <input
                 type="text"
@@ -286,7 +184,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                   <div>
                     <div className="flex items-start gap-2 min-w-0">
                       <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded mt-0.5 shrink-0">
-                        {scaleLabels[w.scale as Scale] ?? w.scale}
+                        {ITEM_SCALE_LABELS[w.scale as Scale] ?? w.scale}
                       </span>
                       <div className="font-semibold text-gray-900 break-words min-w-0 leading-snug">
                         {w.maker && <span className="text-xs text-gray-500 block mb-0.5">{w.maker}</span>}
@@ -300,7 +198,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
                     )}
                   </div>
 
-                  <form action={handleMoveWantedToItem} className="flex flex-col gap-2">
+                  <form action={(formData) => handleMoveWantedToItem(projectId, formData)} className="flex flex-col gap-2">
                     <input type="hidden" name="wantedId" value={w.id} />
                     <div className="flex flex-col sm:flex-row gap-2">
                       <select

@@ -4,6 +4,7 @@ import { profiles, friendships, wanted, projects, items } from "@/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
 
 export default async function FriendWantedPage({ 
   params,
@@ -82,9 +83,11 @@ export default async function FriendWantedPage({
 
   const itemsByProjectId = new Map<string, Array<(typeof friendItems)[number]>>();
   for (const item of friendItems) {
-    const current = itemsByProjectId.get(item.projectId) ?? [];
-    current.push(item);
-    itemsByProjectId.set(item.projectId, current);
+    if (item.projectId) {
+      const current = itemsByProjectId.get(item.projectId) ?? [];
+      current.push(item);
+      itemsByProjectId.set(item.projectId, current);
+    }
   }
 
   // 5. TypeScript側でスケール絞り込み（DBクエリで絞り込んでもOKですが、今回はシンプルに配列をフィルタ）
@@ -92,11 +95,10 @@ export default async function FriendWantedPage({
     ? friendWantedList 
     : friendWantedList.filter(w => w.scale === currentScale);
 
-  // 表示用のスケール変換用辞書
-  const scaleLabels: Record<string, string> = {
-    "ALL": "すべて", "N": "Nゲージ", "HO": "HOゲージ", "PLARAIL": "プラレール",
-    "DECAL": "インレタ・シール", "PART_N": "Nパーツ", "PART_HO": "HOパーツ", "OTHER": "その他"
-  };
+  const scaleFilters: Array<{ value: string; label: string }> = [
+    { value: "ALL", label: "すべて" },
+    ...ITEM_SCALE_OPTIONS,
+  ];
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-3xl mx-auto">
@@ -112,12 +114,12 @@ export default async function FriendWantedPage({
 
       {/* スケール絞り込みフィルター（URLパラメータを使って再描画） */}
       <div className="mb-6 flex flex-wrap gap-2">
-        {Object.entries(scaleLabels).map(([key, label]) => (
+        {scaleFilters.map(({ value, label }) => (
           <Link 
-            key={key} 
-            href={`/friends/${friendId}${key === "ALL" ? "" : `?scale=${key}`}`}
+            key={value} 
+            href={`/friends/${friendId}${value === "ALL" ? "" : `?scale=${value}`}`}
             className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-              currentScale === key 
+              currentScale === value 
                 ? "bg-blue-600 text-white shadow-md" 
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
@@ -139,7 +141,7 @@ export default async function FriendWantedPage({
               <div className="flex justify-between items-start">
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded mr-2">
-                    {scaleLabels[item.scale]}
+                    {ITEM_SCALE_LABELS[item.scale as Scale] ?? item.scale}
                   </span>
                   <span className="font-bold text-lg break-words">{item.name}</span>
                 </div>
@@ -190,7 +192,7 @@ export default async function FriendWantedPage({
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs bg-gray-200 px-2 py-1 rounded">{item.type}</span>
                             <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              {scaleLabels[item.scale] ?? item.scale}
+                              {ITEM_SCALE_LABELS[item.scale as Scale] ?? item.scale}
                             </span>
                             <span className="text-xs bg-white border px-2 py-1 rounded">数量: {item.amount}</span>
                           </div>

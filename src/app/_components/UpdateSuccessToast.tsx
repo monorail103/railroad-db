@@ -7,6 +7,7 @@ type Props = {
 	show: boolean;
 };
 
+// プロジェクトの更新が成功したときに、保存完了のトーストを表示するコンポーネント
 export default function UpdateSuccessToast({ show }: Props) {
 	const router = useRouter();
 	const pathname = usePathname();

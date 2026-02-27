@@ -2,9 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/db"; // パスは環境に合わせてください
 import { profiles, friendships } from "@/db/schema";
 import { eq, or, and } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { friend } from "./actions/friend";
+import { sendRequest, acceptRequest } from "../actions/friend";
 import Link from "next/link";
 
 // ランダムな8桁のフレンドコードを生成する関数
@@ -65,48 +64,6 @@ export default async function FriendsPage() {
                 eq(friendships.status, "ACCEPTED")
             )
         );
-
-    // --- Server Actions ---
-
-    // フレンド申請を送る
-    async function sendRequest(formData: FormData) {
-        "use server";
-        const targetCode = formData.get("friendCode") as string;
-        if (!targetCode || targetCode === myProfile.friendCode) return;
-
-        // コードから相手のユーザーを探す
-        const [targetProfile] = await db.select().from(profiles).where(eq(profiles.friendCode, targetCode));
-        if (!targetProfile) return; // 該当なし
-
-        // 既に申請済み・フレンド済みかチェック（簡易版）
-        const existing = await db.select().from(friendships).where(
-            or(
-                and(eq(friendships.requesterId, userId), eq(friendships.addresseeId, targetProfile.userId)),
-                and(eq(friendships.requesterId, targetProfile.userId), eq(friendships.addresseeId, userId))
-            )
-        );
-        if (existing.length > 0) return;
-
-        // 申請レコードを作成
-        await db.insert(friendships).values({
-            requesterId: userId,
-            addresseeId: targetProfile.userId,
-            status: "PENDING",
-        });
-        revalidatePath("/friends");
-    }
-
-    // フレンド申請を承認する
-    async function acceptRequest(formData: FormData) {
-        "use server";
-        const friendshipId = formData.get("friendshipId") as string;
-
-        await db.update(friendships)
-            .set({ status: "ACCEPTED", updatedAt: new Date() })
-            .where(eq(friendships.id, friendshipId));
-
-        revalidatePath("/friends");
-    }
 
     // --- UI表示 ---
     return (

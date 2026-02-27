@@ -1,4 +1,5 @@
 import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { ITEM_SCALES } from "@/lib/item-scale";
 
 export const projectStatus = pgEnum("project_status", [
   "IN_PROGRESS",
@@ -6,15 +7,7 @@ export const projectStatus = pgEnum("project_status", [
   "ARCHIVED",
 ]);
 
-export const itemScale = pgEnum("item_scale", [
-  "N", 
-  "HO", 
-  "PLARAIL", 
-  "DECAL",   // インレタ・シール類
-  "PART_N",  // Nパーツ
-  "PART_HO", // HOパーツ
-  "OTHER"    // その他
-]);
+export const itemScale = pgEnum("item_scale", ITEM_SCALES);
 
 // フレンド申請のステータス
 export const friendshipStatus = pgEnum("friendship_status", [
@@ -43,7 +36,6 @@ export const projects = pgTable("projects", {
 export const items = pgTable("items", {
   id: uuid("id").defaultRandom().primaryKey(),
   projectId: uuid("project_id")
-    .notNull()
     .references(() => projects.id, { onDelete: "restrict", onUpdate: "cascade" }),
   type: itemType("type").notNull(),
   price: text("price"), // 価格
@@ -63,7 +55,6 @@ export const items = pgTable("items", {
 export const wanted = pgTable("wanted", {
   id: uuid("id").defaultRandom().primaryKey(),
   projectId: uuid("project_id")
-    .notNull()
     .references(() => projects.id, { onDelete: "cascade", onUpdate: "cascade" }),
   maker: text("maker"), // "KATO", "TOMIX" など
   name: text("name").notNull(),

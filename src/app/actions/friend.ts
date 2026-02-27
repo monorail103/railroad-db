@@ -36,3 +36,14 @@ export async function sendRequest(formData: FormData) {
     });
     revalidatePath("/friends");
 }
+
+// フレンド申請を承認する
+export async function acceptRequest(formData: FormData) {
+    const friendshipId = formData.get("friendshipId") as string;
+
+    await db.update(friendships)
+        .set({ status: "ACCEPTED", updatedAt: new Date() })
+        .where(eq(friendships.id, friendshipId));
+
+    revalidatePath("/friends");
+}

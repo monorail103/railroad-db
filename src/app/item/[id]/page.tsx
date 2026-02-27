@@ -6,19 +6,8 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import UpdateSuccessToast from "../../_components/UpdateSuccessToast";
-
-type Scale = "N" | "HO" | "PLARAIL" | "DECAL" | "PART_N" | "PART_HO" | "OTHER";
+import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
 type ItemType = "SET" | "SINGLE_CAR" | "PART";
-
-const scaleLabels: Record<Scale, string> = {
-	N: "Nゲージ",
-	HO: "HOゲージ",
-	PLARAIL: "プラレール",
-	DECAL: "インレタ/シール",
-	PART_N: "Nパーツ",
-	PART_HO: "HOパーツ",
-	OTHER: "その他",
-};
 
 const itemTypeLabels: Record<ItemType, string> = {
 	SINGLE_CAR: "単品車両",
@@ -142,7 +131,7 @@ export default async function ItemDetailPage({
 							{itemTypeLabels[itemDetail.type as ItemType] ?? itemDetail.type}
 						</span>
 						<span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
-							{scaleLabels[itemDetail.scale as Scale] ?? itemDetail.scale}
+							{ITEM_SCALE_LABELS[itemDetail.scale as Scale] ?? itemDetail.scale}
 						</span>
 					</div>
 				</div>
@@ -211,13 +200,11 @@ export default async function ItemDetailPage({
 						<div>
 							<label className="block text-sm font-medium text-slate-700 mb-1">スケール</label>
 							<select name="scale" defaultValue={itemDetail.scale} className="border p-2 rounded w-full" required>
-								<option value="N">N</option>
-								<option value="HO">HO</option>
-								<option value="PLARAIL">プラレール</option>
-								<option value="DECAL">インレタ/シール</option>
-								<option value="PART_N">Nパーツ</option>
-								<option value="PART_HO">HOパーツ</option>
-								<option value="OTHER">その他</option>
+								{ITEM_SCALE_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
 							</select>
 						</div>
 					</div>

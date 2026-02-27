@@ -6,18 +6,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import UpdateSuccessToast from "../../_components/UpdateSuccessToast";
-
-type Scale = "N" | "HO" | "PLARAIL" | "DECAL" | "PART_N" | "PART_HO" | "OTHER";
-
-const scaleLabels: Record<Scale, string> = {
-  N: "Nゲージ",
-  HO: "HOゲージ",
-  PLARAIL: "プラレール",
-  DECAL: "インレタ/シール",
-  PART_N: "Nパーツ",
-  PART_HO: "HOパーツ",
-  OTHER: "その他",
-};
+import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
 
 export default async function WantedDetailPage({
   params,
@@ -159,7 +148,7 @@ export default async function WantedDetailPage({
             <h2 className="text-2xl font-bold text-slate-900">{wantedItem.name}</h2>
           </div>
           <span className="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full font-bold whitespace-nowrap ml-4">
-            {scaleLabels[wantedItem.scale as Scale] ?? wantedItem.scale}
+            {ITEM_SCALE_LABELS[wantedItem.scale as Scale] ?? wantedItem.scale}
           </span>
         </div>
 
@@ -309,13 +298,11 @@ export default async function WantedDetailPage({
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">スケール</label>
               <select name="scale" defaultValue={wantedItem.scale} className="border p-2 rounded w-full" required>
-                <option value="N">N</option>
-                <option value="HO">HO</option>
-                <option value="PLARAIL">プラレール</option>
-                <option value="DECAL">インレタ/シール</option>
-                <option value="PART_N">Nパーツ</option>
-                <option value="PART_HO">HOパーツ</option>
-                <option value="OTHER">その他</option>
+                {ITEM_SCALE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
