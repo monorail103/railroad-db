@@ -42,7 +42,7 @@ export default async function FriendWantedPage({
   if (!friendProfile) notFound();
 
   // 3. フレンドのWANTEDリストを、所属するプロジェクト名と一緒に一括取得
-  let friendWantedQuery = db
+  const friendWantedQuery = db
     .select({
       id: wanted.id,
       name: wanted.name,

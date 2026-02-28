@@ -179,7 +179,7 @@ export default async function ItemDetailPage({
 				<form action={handleUpdateItem} className="flex flex-col gap-4">
 					<div>
 						<label className="block text-sm font-medium text-slate-700 mb-1">所属プロジェクト</label>
-						<select name="projectId" defaultValue={itemDetail.projectId} className="border p-2 rounded w-full" required>
+						<select name="projectId" defaultValue={itemDetail.projectId ?? ""} className="border p-2 rounded w-full" required>
 							{userProjects.map((project) => (
 								<option key={project.id} value={project.id}>
 									{project.name}
