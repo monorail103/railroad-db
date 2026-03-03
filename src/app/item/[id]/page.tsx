@@ -2,11 +2,11 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { items, projects } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import UpdateSuccessToast from "../../_components/UpdateSuccessToast";
 import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
+import { updateItemById } from "@/app/actions/item";
 type ItemType = "SET" | "SINGLE_CAR" | "PART";
 
 const itemTypeLabels: Record<ItemType, string> = {
@@ -54,61 +54,8 @@ export default async function ItemDetailPage({
 		.select({ id: projects.id, name: projects.name })
 		.from(projects)
 		.where(eq(projects.userId, userId));
-    
-    // サーバーアクション：所有品の情報を更新する
-	async function handleUpdateItem(formData: FormData) {
-		"use server";
 
-		const { userId: actionUserId } = await auth();
-		if (!actionUserId) return;
-
-		const nextProjectId = formData.get("projectId") as string;
-		const type = formData.get("type") as ItemType;
-		const maker = (formData.get("maker") as string) ?? "";
-		const name = (formData.get("name") as string) ?? "";
-		const scale = formData.get("scale") as Scale;
-		const amount = Number(formData.get("amount"));
-		const price = (formData.get("price") as string) ?? "";
-		const remarks = (formData.get("remarks") as string) ?? "";
-		const photoUrl = (formData.get("photoUrl") as string) ?? "";
-
-		if (!nextProjectId || !name.trim() || !type || !scale || !Number.isInteger(amount) || amount < 1) {
-			return;
-		}
-
-		const [ownerProject] = await db
-			.select({ id: projects.id })
-			.from(projects)
-			.where(and(eq(projects.id, nextProjectId), eq(projects.userId, actionUserId)));
-		if (!ownerProject) return;
-
-		const [targetItem] = await db
-			.select({ id: items.id, currentProjectId: items.projectId })
-			.from(items)
-			.innerJoin(projects, eq(items.projectId, projects.id))
-			.where(and(eq(items.id, itemId), eq(projects.userId, actionUserId)));
-		if (!targetItem) return;
-
-		await db
-			.update(items)
-			.set({
-				projectId: nextProjectId,
-				type,
-				maker: maker.trim() || null,
-				name: name.trim(),
-				scale,
-				amount,
-				price: price.trim() || null,
-				remarks: remarks.trim() || null,
-				photoUrl: photoUrl.trim() || null,
-			})
-			.where(eq(items.id, itemId));
-
-		revalidatePath(`/item/${itemId}`);
-		revalidatePath(`/projects/${targetItem.currentProjectId}`);
-		revalidatePath(`/projects/${nextProjectId}`);
-		redirect(`/item/${itemId}?updated=1`);
-	}
+	const updateItemAction = updateItemById.bind(null, itemId);
 
 	return (
 		<main className="min-h-screen p-4 sm:p-8 max-w-2xl mx-auto pb-16">
@@ -176,7 +123,7 @@ export default async function ItemDetailPage({
 			<section className="bg-white border rounded-xl p-6 shadow-sm">
 				<h3 className="text-lg font-bold mb-4 text-slate-800">詳細情報を編集する</h3>
 
-				<form action={handleUpdateItem} className="flex flex-col gap-4">
+				<form action={updateItemAction} className="flex flex-col gap-4">
 					<div>
 						<label className="block text-sm font-medium text-slate-700 mb-1">所属プロジェクト</label>
 						<select name="projectId" defaultValue={itemDetail.projectId ?? ""} className="border p-2 rounded w-full" required>

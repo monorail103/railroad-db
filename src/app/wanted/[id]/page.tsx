@@ -1,12 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { projects, wanted, items } from "@/db/schema";
+import { projects, wanted } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import UpdateSuccessToast from "../../_components/UpdateSuccessToast";
 import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
+import {
+  deleteWantedById,
+  moveWantedToItemById,
+  registerWantedPurchaseById,
+  updateWantedById,
+} from "@/app/actions/wanted";
 
 export default async function WantedDetailPage({
   params,
@@ -43,91 +48,10 @@ export default async function WantedDetailPage({
 
   if (!wantedItem) notFound();
 
-  // --- Server Actions ---
-
-  // WANTEDの更新
-  async function handleUpdateWanted(formData: FormData) {
-    "use server";
-    const maker = formData.get("maker") as string;
-    const name = formData.get("name") as string;
-    const scale = formData.get("scale") as Scale;
-    const remarks = formData.get("remarks") as string;
-    const amount = parseInt(formData.get("amount") as string, 10);
-    const storeUrl = formData.get("storeUrl") as string;
-
-    if (!name || !scale || isNaN(amount)) return;
-
-    await db
-      .update(wanted)
-      .set({ maker: maker?.trim() || null, name, scale, remarks, amount, storeUrl })
-      .where(eq(wanted.id, wantedId));
-    
-    revalidatePath(`/wanted/${wantedId}`);
-    revalidatePath("/wanted");
-    revalidatePath(`/projects/${wantedItem.projectId}`);
-    redirect(`/wanted/${wantedId}?updated=1`);
-  }
-
-  // WANTEDの削除
-  async function handleDeleteWanted() {
-    "use server";
-    await db.delete(wanted).where(eq(wanted.id, wantedId));
-    revalidatePath("/wanted");
-    revalidatePath(`/projects/${wantedItem.projectId}`);
-    redirect("/wanted");
-  }
-
-  // WANTED → 所有品（items）へ移行
-  async function handleMoveWantedToItem(formData: FormData) {
-    "use server";
-    const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
-    const maker = (formData.get("maker") as string) ?? "";
-
-    if (!type) return;
-
-    await db.insert(items).values({
-      projectId: wantedItem.projectId,
-      type,
-      maker: maker.trim() || wantedItem.maker || null,
-      name: wantedItem.name,
-      scale: wantedItem.scale as Scale,
-      amount: wantedItem.amount,
-    });
-
-    await db.delete(wanted).where(eq(wanted.id, wantedId));
-
-    revalidatePath("/wanted");
-    revalidatePath(`/projects/${wantedItem.projectId}`);
-    redirect(`/projects/${wantedItem.projectId}`);
-  }
-
-  // WANTEDを購入登録して所有品へ移行
-  async function handleRegisterPurchase(formData: FormData) {
-    "use server";
-    const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
-    const maker = (formData.get("maker") as string) ?? "";
-    const price = (formData.get("price") as string) ?? "";
-    const remarks = (formData.get("remarks") as string) ?? "";
-
-    if (!type) return;
-
-    await db.insert(items).values({
-      projectId: wantedItem.projectId,
-      type,
-      maker: maker.trim() || wantedItem.maker || null,
-      name: wantedItem.name,
-      scale: wantedItem.scale as Scale,
-      amount: wantedItem.amount,
-      price: price.trim() || null,
-      remarks: remarks.trim() || wantedItem.remarks || null,
-    });
-
-    await db.delete(wanted).where(eq(wanted.id, wantedId));
-
-    revalidatePath("/wanted");
-    revalidatePath(`/projects/${wantedItem.projectId}`);
-    redirect(`/projects/${wantedItem.projectId}`);
-  }
+  const updateWantedAction = updateWantedById.bind(null, wantedId);
+  const deleteWantedAction = deleteWantedById.bind(null, wantedId);
+  const moveWantedAction = moveWantedToItemById.bind(null, wantedId);
+  const registerPurchaseAction = registerWantedPurchaseById.bind(null, wantedId);
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-2xl mx-auto pb-20">
@@ -180,7 +104,7 @@ export default async function WantedDetailPage({
           <h3 className="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2">
             ✨ 入手しましたか？
           </h3>
-          <form action={handleMoveWantedToItem} className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <form action={moveWantedAction} className="bg-blue-50 p-4 rounded-lg border border-blue-100">
             <p className="text-sm text-blue-800 mb-3">
               このアイテムを入手した場合、所有品リストへ移行できます。
             </p>
@@ -210,7 +134,7 @@ export default async function WantedDetailPage({
             </div>
           </form>
 
-          <form action={handleRegisterPurchase} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 mt-4">
+          <form action={registerPurchaseAction} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 mt-4">
             <p className="text-sm text-emerald-800 mb-3">
               価格を含めて、購入済みとしてすぐに登録できます。
             </p>
@@ -270,7 +194,7 @@ export default async function WantedDetailPage({
       {/* 編集フォーム */}
       <div className="bg-white border rounded-xl p-6 shadow-sm mb-8">
         <h3 className="text-lg font-bold mb-4 text-slate-800">情報を編集する</h3>
-        <form action={handleUpdateWanted} className="flex flex-col gap-4">
+        <form action={updateWantedAction} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">メーカー</label>
@@ -355,7 +279,7 @@ export default async function WantedDetailPage({
         <p className="text-sm text-red-600 mb-4">
           このWANTEDアイテムを削除します。この操作は取り消せません。
         </p>
-        <form action={handleDeleteWanted}>
+        <form action={deleteWantedAction}>
           <button
             type="submit"
             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"

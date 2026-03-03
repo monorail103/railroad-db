@@ -1,11 +1,10 @@
 import { db } from "@/db";
-import { projects, wanted, items } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { projects, wanted } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import UpdateSuccessToast from "../_components/UpdateSuccessToast";
+import { quickPurchaseWanted } from "@/app/actions/wanted";
 
 export default async function WantedPage({
   searchParams,
@@ -42,55 +41,6 @@ export default async function WantedPage({
     .innerJoin(projects, eq(wanted.projectId, projects.id))
     .where(eq(projects.userId, userId))
     .orderBy(desc(wanted.createdAt));
-
-  async function handleQuickPurchase(formData: FormData) {
-    "use server";
-
-    const { userId: actionUserId } = await auth();
-    if (!actionUserId) return;
-
-    const wantedId = formData.get("wantedId") as string;
-    const type = (formData.get("type") as "SET" | "SINGLE_CAR" | "PART") || "SINGLE_CAR";
-    const price = ((formData.get("price") as string) ?? "").trim();
-
-    if (!wantedId) return;
-
-    // 対象のWANTEDが本当にこのユーザーのものであるか確認しつつ、購入登録のための情報を取得
-    const [targetWanted] = await db
-      .select({
-        id: wanted.id,
-        projectId: wanted.projectId,
-        maker: wanted.maker,
-        name: wanted.name,
-        scale: wanted.scale,
-        amount: wanted.amount,
-        remarks: wanted.remarks,
-      })
-      .from(wanted)
-      .innerJoin(projects, eq(wanted.projectId, projects.id))
-      .where(and(eq(wanted.id, wantedId), eq(projects.userId, actionUserId)));
-
-    if (!targetWanted) return;
-    
-    // 1. itemsテーブルに購入したアイテムを登録
-    await db.insert(items).values({
-      projectId: targetWanted.projectId,
-      type,
-      maker: targetWanted.maker,
-      name: targetWanted.name,
-      scale: targetWanted.scale,
-      amount: targetWanted.amount,
-      remarks: targetWanted.remarks,
-      price: price || null,
-    });
-
-    await db.delete(wanted).where(eq(wanted.id, wantedId));
-
-    revalidatePath("/wanted");
-    revalidatePath(`/projects/${targetWanted.projectId}`);
-    revalidatePath(`/wanted/${wantedId}`);
-    redirect(`/wanted?updated=1`);
-  }
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto pb-20">
@@ -185,7 +135,7 @@ export default async function WantedPage({
               )}
 
               <form
-                action={handleQuickPurchase}
+                action={quickPurchaseWanted}
                 className="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row gap-2"
               >
                 <input type="hidden" name="wantedId" value={item.id} />
