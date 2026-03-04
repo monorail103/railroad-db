@@ -70,8 +70,7 @@ export const wanted = pgTable("wanted", {
   scale: itemScale("scale").notNull().default("N"), 
   remarks: text("remarks"), 
   amount: integer("amount").notNull().default(1), 
-  // ★ 変更点: 優先度を追加（デフォルトは中）
-  priority: wantedPriority("priority").notNull().default("MEDIUM"),
+  priority: wantedPriority("priority").notNull().default("MEDIUM"), // 優先度を追加（デフォルトは中）
   photoUrl: text("photo_url"),
   storeUrl: text("store_url"), 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

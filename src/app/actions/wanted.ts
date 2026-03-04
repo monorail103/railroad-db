@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Scale } from "@/lib/item-scale";
 
+// 指定したwantedIdが、userIdに紐づくものであればその情報を返す。なければnull。
 async function getOwnedWantedItem(wantedId: string, userId: string) {
 	const [wantedItem] = await db
 		.select({
@@ -18,6 +19,7 @@ async function getOwnedWantedItem(wantedId: string, userId: string) {
 			remarks: wanted.remarks,
 			amount: wanted.amount,
 			projectId: wanted.projectId,
+			priority: wanted.priority,
 		})
 		.from(wanted)
 		.innerJoin(projects, eq(wanted.projectId, projects.id))
@@ -26,6 +28,7 @@ async function getOwnedWantedItem(wantedId: string, userId: string) {
 	return wantedItem;
 }
 
+// Wanted情報の更新
 export async function updateWantedById(wantedId: string, formData: FormData) {
 	const { userId } = await auth();
 	if (!userId) return;
@@ -39,6 +42,7 @@ export async function updateWantedById(wantedId: string, formData: FormData) {
 	const remarks = formData.get("remarks") as string;
 	const amount = parseInt(formData.get("amount") as string, 10);
 	const storeUrl = formData.get("storeUrl") as string;
+	const priority = formData.get("priority") as "HIGH" | "MEDIUM" | "LOW";
 
 	if (!name || !scale || isNaN(amount)) return;
 
@@ -51,8 +55,9 @@ export async function updateWantedById(wantedId: string, formData: FormData) {
 			remarks,
 			amount,
 			storeUrl: storeUrl?.trim() || null,
+			priority,
 		})
-		.where(eq(wanted.id, wantedId));
+		.where(and(eq(wanted.id, wantedId), eq(wanted.userId, userId)));
 
 	revalidatePath(`/wanted/${wantedId}`);
 	revalidatePath("/wanted");
@@ -67,7 +72,7 @@ export async function deleteWantedById(wantedId: string) {
 	const target = await getOwnedWantedItem(wantedId, userId);
 	if (!target) return;
 
-	await db.delete(wanted).where(eq(wanted.id, wantedId));
+	await db.delete(wanted).where(and(eq(wanted.id, wantedId), eq(wanted.userId, userId)));
 	revalidatePath("/wanted");
 	revalidatePath(`/projects/${target.projectId}`);
 	redirect("/wanted");
@@ -86,6 +91,7 @@ export async function moveWantedToItemById(wantedId: string, formData: FormData)
 	if (!type) return;
 
 	await db.insert(items).values({
+		userId,
 		projectId: target.projectId,
 		type,
 		maker: maker.trim() || target.maker || null,
@@ -94,7 +100,7 @@ export async function moveWantedToItemById(wantedId: string, formData: FormData)
 		amount: target.amount,
 	});
 
-	await db.delete(wanted).where(eq(wanted.id, wantedId));
+	await db.delete(wanted).where(and(eq(wanted.id, wantedId), eq(wanted.userId, userId)));
 
 	revalidatePath("/wanted");
 	revalidatePath(`/projects/${target.projectId}`);
@@ -116,6 +122,7 @@ export async function registerWantedPurchaseById(wantedId: string, formData: For
 	if (!type) return;
 
 	await db.insert(items).values({
+		userId,
 		projectId: target.projectId,
 		type,
 		maker: maker.trim() || target.maker || null,
@@ -126,7 +133,7 @@ export async function registerWantedPurchaseById(wantedId: string, formData: For
 		remarks: remarks.trim() || target.remarks || null,
 	});
 
-	await db.delete(wanted).where(eq(wanted.id, wantedId));
+	await db.delete(wanted).where(and(eq(wanted.id, wantedId), eq(wanted.userId, userId)));
 
 	revalidatePath("/wanted");
 	revalidatePath(`/projects/${target.projectId}`);
@@ -147,6 +154,7 @@ export async function quickPurchaseWanted(formData: FormData) {
 	if (!target) return;
 
 	await db.insert(items).values({
+		userId,
 		projectId: target.projectId,
 		type,
 		maker: target.maker,
@@ -157,7 +165,7 @@ export async function quickPurchaseWanted(formData: FormData) {
 		price: price || null,
 	});
 
-	await db.delete(wanted).where(eq(wanted.id, wantedId));
+	await db.delete(wanted).where(and(eq(wanted.id, wantedId), eq(wanted.userId, userId)));
 
 	revalidatePath("/wanted");
 	revalidatePath(`/projects/${target.projectId}`);

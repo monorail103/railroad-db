@@ -28,48 +28,63 @@ export async function createProject(formData: FormData) {
 
   // 所有品の追加
 export async function handleAddItem(projectId: string, formData: FormData) {
+
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
   const type = formData.get("type") as "SET" | "SINGLE_CAR" | "PART";
   const maker = formData.get("maker") as string;
   const name = formData.get("name") as string;
   const scale = formData.get("scale") as Scale;
   const remarks = formData.get("remarks") as string;
 
+  const isTradeable = formData.get("isTradeable") === "true";
+
   if (!name || !type || !scale) return;
 
   await db.insert(items).values({
+    userId,
     projectId,
     type,
     maker: maker?.trim() || null,
     name,
     remarks: remarks?.trim() || null,
     scale,
+    isTradeable,
   });
   revalidatePath(`/projects/${projectId}`);
 }
 
 // WANTEDの追加
 export async function handleAddWanted(projectId: string, formData: FormData) {
+
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
   const maker = formData.get("maker") as string;
   const name = formData.get("name") as string;
   const scale = formData.get("scale") as Scale;
   const remarks = formData.get("remarks") as string;
   const storeUrl = formData.get("storeUrl") as string;
+  
+  const priority = formData.get("priority") as "HIGH" | "MEDIUM" | "LOW";
 
   if (!name || !scale) return;
 
   await db.insert(wanted).values({ 
+    userId,
     projectId, 
     maker: maker?.trim() || null,
     name, 
     scale, 
     remarks,
     storeUrl: storeUrl?.trim() || null,
+    priority,
   });
   revalidatePath(`/projects/${projectId}`);
 }
 
 export async function handleMoveWantedToItem(projectId: string, formData: FormData) {
-  "use server";
 
   const { userId: actionUserId } = await auth();
   if (!actionUserId) return;
@@ -94,6 +109,7 @@ export async function handleMoveWantedToItem(projectId: string, formData: FormDa
   if (!targetWanted) return;
 
   await db.insert(items).values({
+    userId: actionUserId,
     projectId,
     type,
     maker: maker.trim() || targetWanted.maker || null,
