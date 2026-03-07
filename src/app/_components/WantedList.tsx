@@ -30,18 +30,18 @@ export function WantedList({
       {items.map((w) => (
         <li
           key={w.id}
-          className="p-3 bg-white border border-yellow-300 rounded shadow-sm"
+          className="p-3 bg-amber-50/60 border border-amber-200 rounded-lg hover:border-amber-300 transition-colors"
         >
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             {/* アイテム情報 */}
             <div>
               <div className="flex items-start gap-2 min-w-0">
-                <span className="text-xs font-bold text-yellow-800 bg-yellow-100 px-2 py-1 rounded mt-0.5 shrink-0">
+                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full mt-0.5 shrink-0">
                   {ITEM_SCALE_LABELS[w.scale as Scale] ?? w.scale}
                 </span>
-                <div className="font-semibold text-gray-900 break-words min-w-0 leading-snug">
+                <div className="font-semibold text-slate-800 break-words min-w-0 leading-snug">
                   {w.maker && (
-                    <span className="text-xs text-gray-500 block mb-0.5">
+                    <span className="text-xs text-slate-500 block mb-0.5">
                       {w.maker}
                     </span>
                   )}
@@ -54,19 +54,19 @@ export function WantedList({
                 </div>
               </div>
               {w.remarks && (
-                <div className="text-sm text-gray-600 mt-1 break-words">
+                <div className="text-sm text-slate-600 mt-1.5 break-words bg-white/60 rounded px-2 py-1">
                   📝 {w.remarks}
                 </div>
               )}
             </div>
 
             {/* 所有品へ移行フォーム */}
-            <form action={moveAction} className="flex flex-col gap-2">
+            <form action={moveAction} className="flex flex-col gap-2 border-t border-amber-200 pt-2">
               <input type="hidden" name="wantedId" value={w.id} />
               <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   name="type"
-                  className="border border-yellow-300 p-2 rounded text-sm w-full sm:w-auto"
+                  className="border border-slate-300 bg-white p-1.5 rounded-lg text-sm w-full sm:w-auto"
                   defaultValue="SINGLE_CAR"
                   required
                 >
@@ -78,11 +78,11 @@ export function WantedList({
                   type="text"
                   name="maker"
                   placeholder="メーカー (任意)"
-                  className="border border-yellow-300 p-2 rounded w-full sm:flex-1 min-w-0 text-sm"
+                  className="border border-slate-300 bg-white p-1.5 rounded-lg w-full sm:flex-1 min-w-0 text-sm placeholder:text-slate-400"
                 />
                 <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm w-full sm:w-auto whitespace-nowrap transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm w-full sm:w-auto whitespace-nowrap shadow-sm hover:shadow transition-all font-medium"
                 >
                   所有品へ移行
                 </button>

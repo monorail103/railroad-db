@@ -17,23 +17,23 @@ export function ItemList({ items }: { items: Item[] }) {
   return (
     <ul className="space-y-2 list-none">
       {items.map((item) => (
-        <li key={item.id} className="p-2 border-b text-sm">
-          <div className="flex flex-col gap-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="bg-gray-200 text-xs px-2 py-1 rounded whitespace-nowrap">
+        <li key={item.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-colors">
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
                 {item.type}
               </span>
-              <span className="bg-gray-100 text-xs px-2 py-1 rounded whitespace-nowrap">
+              <span className="bg-slate-200 text-slate-600 text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
                 {ITEM_SCALE_LABELS[item.scale as Scale] ?? item.scale}
               </span>
             </div>
             <div className="min-w-0 break-words">
               {item.maker && (
-                <span className="text-gray-600 mr-2">[{item.maker}]</span>
+                <span className="text-xs text-slate-500 block">{item.maker}</span>
               )}
               <Link
                 href={`/item/${item.id}`}
-                className="font-medium hover:text-blue-600 hover:underline"
+                className="font-semibold text-slate-800 hover:text-blue-600 hover:underline"
               >
                 {item.name}
               </Link>
