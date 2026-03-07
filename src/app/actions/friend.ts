@@ -39,11 +39,15 @@ export async function sendRequest(formData: FormData) {
 
 // フレンド申請を承認する
 export async function acceptRequest(formData: FormData) {
+
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
     const friendshipId = formData.get("friendshipId") as string;
 
     await db.update(friendships)
         .set({ status: "ACCEPTED", updatedAt: new Date() })
-        .where(eq(friendships.id, friendshipId));
+        .where(and(eq(friendships.id, friendshipId), eq(friendships.addresseeId, userId)));
 
     revalidatePath("/friends");
 }

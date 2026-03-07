@@ -1,14 +1,15 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { db } from "@/db"; // パスは環境に合わせてください
+import { db } from "@/db";
 import { profiles, friendships } from "@/db/schema";
 import { eq, or, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { sendRequest, acceptRequest } from "../actions/friend";
 import Link from "next/link";
+import { BackLink } from "../_components/BackLink";
+import { EmptyState } from "../_components/EmptyState";
 
-// ランダムな8桁のフレンドコードを生成する関数
 function generateFriendCode() {
-    return Math.random().toString(36).substring(2, 10).toUpperCase();
+    return crypto.randomUUID().slice(0, 8).toUpperCase();
 }
 
 export default async function FriendsPage() {
@@ -68,9 +69,7 @@ export default async function FriendsPage() {
     // --- UI表示 ---
     return (
         <main className="min-h-screen p-8 max-w-2xl mx-auto">
-            <div className="mb-6">
-                <Link href="/" className="text-blue-600 hover:underline">← ホームに戻る</Link>
-            </div>
+            <BackLink href="/" label="ホームに戻る" />
 
             <header className="mb-8 border-b pb-4">
                 <h1 className="text-2xl font-bold">フレンド管理</h1>
@@ -124,7 +123,7 @@ export default async function FriendsPage() {
             <section>
                 <h2 className="font-bold mb-2 border-b pb-1">フレンド一覧</h2>
                 {myFriends.length === 0 ? (
-                    <p className="text-gray-500 text-sm">まだフレンドがいません。</p>
+                    <EmptyState title="まだフレンドがいません。" description="フレンドコードを交換して、お互いのコレクションを共有しましょう。" />
                 ) : (
                     <ul className="space-y-2">
                         {myFriends.map(friend => (

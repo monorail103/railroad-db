@@ -3,8 +3,11 @@ import { db } from "@/db";
 import { profiles, friendships, wanted, projects, items } from "@/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
-import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
+import { ITEM_SCALE_LABELS, type Scale } from "@/lib/item-scale";
+import { BackLink } from "@/app/_components/BackLink";
+import { ScaleFilter } from "@/app/_components/ScaleFilter";
+import { EmptyState } from "@/app/_components/EmptyState";
+import { STATUS_META, type ProjectStatus } from "@/lib/project-status";
 
 export default async function FriendWantedPage({ 
   params,
@@ -95,46 +98,26 @@ export default async function FriendWantedPage({
     ? friendWantedList 
     : friendWantedList.filter(w => w.scale === currentScale);
 
-  const scaleFilters: Array<{ value: string; label: string }> = [
-    { value: "ALL", label: "すべて" },
-    ...ITEM_SCALE_OPTIONS,
-  ];
-
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <Link href="/friends" className="text-blue-600 hover:underline">← フレンド一覧に戻る</Link>
-      </div>
+      <BackLink href="/friends" label="フレンド一覧に戻る" />
 
       <header className="mb-8 border-b pb-4">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          👀 {friendProfile.displayName} さんのWANTEDリスト
+          👀 {friendProfile.displayName} さんのコレクション
         </h1>
       </header>
 
-      {/* スケール絞り込みフィルター（URLパラメータを使って再描画） */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {scaleFilters.map(({ value, label }) => (
-          <Link 
-            key={value} 
-            href={`/friends/${friendId}${value === "ALL" ? "" : `?scale=${value}`}`}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-              currentScale === value 
-                ? "bg-blue-600 text-white shadow-md" 
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
+      <div className="mb-6">
+        <ScaleFilter currentScale={currentScale} baseHref={`/friends/${friendId}`} />
       </div>
 
       {/* WANTED一覧表示 */}
       <div className="space-y-4">
         {filteredList.length === 0 ? (
-          <p className="text-gray-500 bg-gray-50 p-6 rounded text-center">
-            {currentScale === "ALL" ? "WANTEDリストは空です。" : "このスケールのWANTEDはありません。"}
-          </p>
+          <EmptyState
+            title={currentScale === "ALL" ? "WANTEDリストは空です。" : "このスケールのWANTEDはありません。"}
+          />
         ) : (
           filteredList.map((item) => (
             <div key={item.id} className="bg-white border-l-4 border-yellow-400 p-4 rounded shadow-sm">
@@ -166,9 +149,7 @@ export default async function FriendWantedPage({
         </header>
 
         {friendProjects.length === 0 ? (
-          <p className="text-gray-500 bg-gray-50 p-6 rounded text-center">
-            プロジェクトはまだ登録されていません。
-          </p>
+          <EmptyState title="プロジェクトはまだ登録されていません。" />
         ) : (
           <div className="space-y-4">
             {friendProjects.map((project) => {
@@ -179,7 +160,7 @@ export default async function FriendWantedPage({
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <span className="font-bold text-lg">{project.name}</span>
                     <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                      {project.status}
+                      {STATUS_META[(project.status as ProjectStatus) ?? "IN_PROGRESS"]?.label ?? project.status}
                     </span>
                   </div>
 
