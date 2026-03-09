@@ -123,3 +123,47 @@ export async function handleMoveWantedToItem(projectId: string, formData: FormDa
 
   revalidatePath(`/projects/${projectId}`);
 }
+
+/** プロジェクトまるごと要らないリスト行き */
+export async function moveProjectToUnwanted(projectId: string, formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // 本人のプロジェクトか確認
+  const [project] = await db
+    .select({ id: projects.id, name: projects.name })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+  if (!project) return;
+
+  const name = ((formData.get("name") as string) ?? "").trim() || project.name;
+  const type = (formData.get("type") as "SET" | "SINGLE_CAR" | "PART") || "SET";
+  const scale = (formData.get("scale") as Scale) || "N";
+  const maker = ((formData.get("maker") as string) ?? "").trim() || null;
+  const price = ((formData.get("price") as string) ?? "").trim() || null;
+  const remarks = ((formData.get("remarks") as string) ?? "").trim() || null;
+
+  // 配下のitemとwantedを全削除
+  await db.delete(items).where(eq(items.projectId, projectId));
+  await db.delete(wanted).where(eq(wanted.projectId, projectId));
+
+  // ユーザー入力の詳細で要らないリストアイテムを作成
+  await db.insert(items).values({
+    userId,
+    projectId: null,
+    type,
+    name,
+    scale,
+    maker,
+    price,
+    remarks,
+    isTradeable: true,
+  });
+
+  // プロジェクト自体を削除
+  await db.delete(projects).where(eq(projects.id, projectId));
+
+  revalidatePath("/");
+  revalidatePath("/unwanted");
+  redirect("/unwanted");
+}

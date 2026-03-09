@@ -72,6 +72,13 @@ export default async function Home() {
             </Link>
           </section>
 
+          <section className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-100 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <h2 className="text-lg font-bold text-red-900 flex items-center gap-2">🗑️ 要らないリスト（トレード可）</h2>
+            <Link href="/unwanted" className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-medium px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all text-center whitespace-nowrap">
+              要らないリストを見る
+            </Link>
+          </section>
+
           <section>
             <div className="flex items-baseline justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold">あなたのプロジェクト</h2>

@@ -8,7 +8,8 @@ import UpdateSuccessToast from "../../_components/UpdateSuccessToast";
 import { BackLink } from "../../_components/BackLink";
 import { ITEM_SCALE_LABELS, ITEM_SCALE_OPTIONS, type Scale } from "@/lib/item-scale";
 import { ITEM_TYPE_LABELS, ITEM_TYPE_OPTIONS } from "@/lib/item-type";
-import { updateItemById } from "@/app/actions/item";
+import { updateItemById, moveItemToUnwanted, reassignItemToProject } from "@/app/actions/item";
+import { MoveToUnwantedForm } from "../../_components/MoveToUnwantedForm";
 
 export default async function ItemDetailPage({
 	params,
@@ -28,13 +29,19 @@ export default async function ItemDetailPage({
 			id: items.id, projectId: items.projectId, type: items.type,
 			maker: items.maker, name: items.name, scale: items.scale,
 			amount: items.amount, price: items.price, remarks: items.remarks,
-			photoUrl: items.photoUrl, projectName: projects.name,
+			photoUrl: items.photoUrl, isTradeable: items.isTradeable,
+			projectName: projects.name,
 		})
 		.from(items)
-		.innerJoin(projects, eq(items.projectId, projects.id))
-		.where(and(eq(items.id, itemId), eq(projects.userId, userId)));
+		.leftJoin(projects, eq(items.projectId, projects.id))
+		.where(and(eq(items.id, itemId), eq(items.userId, userId)));
 
 	if (!detail) notFound();
+
+	const isUnwanted = !detail.projectId;
+	const canMoveToUnwanted = !isUnwanted
+		&& detail.type !== "PART"
+		&& !["DECAL", "PART_N", "PART_HO"].includes(detail.scale);
 
 	const userProjects = await db
 		.select({ id: projects.id, name: projects.name })
@@ -42,11 +49,17 @@ export default async function ItemDetailPage({
 		.where(eq(projects.userId, userId));
 
 	const updateAction = updateItemById.bind(null, itemId);
+	const unwantedAction = moveItemToUnwanted.bind(null, itemId);
+	const reassignAction = reassignItemToProject.bind(null, itemId);
 
 	return (
 		<main className="min-h-screen p-4 sm:p-8 max-w-2xl mx-auto pb-16">
 			<UpdateSuccessToast show={updated === "1"} />
-			<BackLink href={`/projects/${detail.projectId}`} label="プロジェクトに戻る" />
+			{isUnwanted ? (
+				<BackLink href="/unwanted" label="要らないリストに戻る" />
+			) : (
+				<BackLink href={`/projects/${detail.projectId}`} label="プロジェクトに戻る" />
+			)}
 			<h1 className="text-2xl font-bold mb-6">所有品 詳細</h1>
 
 			{/* 情報カード */}
@@ -68,9 +81,15 @@ export default async function ItemDetailPage({
 
 				<div className="mb-5">
 					<div className="text-sm text-slate-500 mb-1">所属プロジェクト</div>
-					<Link href={`/projects/${detail.projectId}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline font-medium bg-blue-50 px-3 py-2 rounded-lg transition-colors">
-						📁 {detail.projectName}
-					</Link>
+					{isUnwanted ? (
+						<span className="inline-flex items-center gap-2 text-red-600 font-medium bg-red-50 px-3 py-2 rounded-lg">
+							🗑️ 要らないリスト（トレード可）
+						</span>
+					) : (
+						<Link href={`/projects/${detail.projectId}`} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline font-medium bg-blue-50 px-3 py-2 rounded-lg transition-colors">
+							📁 {detail.projectName}
+						</Link>
+					)}
 				</div>
 
 				<div className="grid grid-cols-2 gap-4">
@@ -100,16 +119,46 @@ export default async function ItemDetailPage({
 				</section>
 			)}
 
+			{/* 要らないリスト行きフォーム */}
+			{canMoveToUnwanted && (
+				<section className="mb-6">
+					<MoveToUnwantedForm
+						action={unwantedAction}
+						currentRemarks={detail.remarks}
+						currentPrice={detail.price}
+					/>
+				</section>
+			)}
+
+			{isUnwanted && userProjects.length > 0 && (
+				<section className="bg-white border border-green-200 rounded-xl p-6 shadow-sm mb-8">
+					<h3 className="text-lg font-bold mb-3 text-green-800">プロジェクトに再紐付け</h3>
+					<form action={reassignAction} className="flex flex-col sm:flex-row gap-3">
+						<select name="projectId" className="border border-green-300 bg-white p-2 rounded-lg flex-1 text-sm" required>
+							<option value="">プロジェクトを選択...</option>
+							{userProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+						</select>
+						<button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap shadow-sm hover:shadow transition-all">
+							紐付け
+						</button>
+					</form>
+				</section>
+			)}
+
 			{/* 編集フォーム */}
 			<section className="bg-white border rounded-xl p-6 shadow-sm">
 				<h3 className="text-lg font-bold mb-4 text-slate-800">詳細情報を編集する</h3>
 				<form action={updateAction} className="flex flex-col gap-4">
-					<div>
-						<label className="block text-sm font-medium text-slate-700 mb-1">所属プロジェクト</label>
-						<select name="projectId" defaultValue={detail.projectId ?? ""} className="border p-2 rounded w-full" required>
-							{userProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-						</select>
-					</div>
+					{isUnwanted ? (
+						<input type="hidden" name="projectId" value="" />
+					) : (
+						<div>
+							<label className="block text-sm font-medium text-slate-700 mb-1">所属プロジェクト</label>
+							<select name="projectId" defaultValue={detail.projectId ?? ""} className="border p-2 rounded w-full" required>
+								{userProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+							</select>
+						</div>
+					)}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
 							<label className="block text-sm font-medium text-slate-700 mb-1">種別</label>

@@ -9,6 +9,8 @@ import { AddWantedForm } from "../../_components/AddWantedForm";
 import { ItemList } from "../../_components/ItemList";
 import { WantedList } from "../../_components/WantedList";
 import { STATUS_META, type ProjectStatus } from "@/lib/project-status";
+import { moveProjectToUnwanted } from "@/app/actions/project";
+import { ProjectUnwantedForm } from "@/app/_components/ProjectUnwantedForm";
 
 export default async function ProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
@@ -29,6 +31,7 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
   ]);
 
   const meta = STATUS_META[(project.status as ProjectStatus) ?? "IN_PROGRESS"];
+  const unwantedAction = moveProjectToUnwanted.bind(null, projectId);
 
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-5xl mx-auto">
@@ -48,6 +51,9 @@ export default async function ProjectDetail({ params }: { params: Promise<{ id: 
             <div className="text-xs text-amber-600 font-medium">WANTED</div>
             <div className="text-2xl font-bold text-amber-800">{projectWanted.length}</div>
           </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <ProjectUnwantedForm action={unwantedAction} projectName={project.name} />
         </div>
       </header>
 

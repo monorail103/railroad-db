@@ -23,12 +23,6 @@ export function AppHeader() {
               >
                 🛒 WANTED
               </Link>
-              <Link 
-                href="/friends" 
-                className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-              >
-                フレンド
-              </Link>
             </nav>
           </SignedIn>
         </div>
@@ -49,12 +43,6 @@ export function AppHeader() {
                   className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
                 >
                   🛒
-                </Link>
-                <Link 
-                  href="/friends" 
-                  className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
-                >
-                  フレンド
                 </Link>
               </div>
               <div className="h-8 w-8 rounded-full ring-2 ring-blue-100 flex items-center justify-center overflow-hidden transition-transform hover:scale-105">
