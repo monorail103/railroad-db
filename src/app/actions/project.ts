@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { projects, items, wanted } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import type { Scale } from "@/lib/item-scale";
+import { redirect } from "next/navigation";
 
 export async function createProject(formData: FormData) {
   const { userId } = await auth();
