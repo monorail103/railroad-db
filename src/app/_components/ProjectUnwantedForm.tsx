@@ -22,7 +22,7 @@ export function ProjectUnwantedForm({
           onClick={() => setOpen(true)}
           className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
-          🗑️ まるごと要らないリスト行き
+          🗑️ セット単位で要らないリスト行き
         </button>
         <p className="text-xs text-slate-500 mt-1">配下のアイテム・WANTEDを全削除し、要らないリストに登録します</p>
       </div>
