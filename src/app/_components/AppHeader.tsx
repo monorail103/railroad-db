@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { InstallAppButton } from "@/app/_components/InstallAppButton";
 
 export function AppHeader() {
   return (
@@ -28,6 +29,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-4">
+          <InstallAppButton />
           <SignedOut>
             <SignInButton mode="modal">
               <button className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-5 py-2.5 rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 font-medium text-sm">
