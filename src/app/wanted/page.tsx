@@ -25,6 +25,7 @@ export default async function WantedPage({
       maker: wanted.maker,
       name: wanted.name,
       scale: wanted.scale,
+      price: wanted.price,
       remarks: wanted.remarks,
       amount: wanted.amount,
       photoUrl: wanted.photoUrl,
@@ -37,9 +38,21 @@ export default async function WantedPage({
     .where(eq(projects.userId, userId))
     .orderBy(desc(wanted.createdAt));
 
+  const totalRequiredPrice = myWantedList.reduce((sum, item) => {
+    if (item.price === null) return sum;
+    return sum + item.price * item.amount;
+  }, 0);
+
+  const pricedItemCount = myWantedList.filter((item) => item.price !== null).length;
+
   return (
     <main className="min-h-screen p-4 sm:p-8 max-w-4xl mx-auto pb-20">
       <UpdateSuccessToast show={updated === "1"} />
+      <section className="mb-5 rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 p-5 shadow-sm">
+        <p className="text-xs font-semibold tracking-wide text-amber-800">必要なものの合計額</p>
+        <p className="mt-1 text-3xl sm:text-4xl font-extrabold text-amber-900">{totalRequiredPrice.toLocaleString("ja-JP")}円</p>
+        <p className="mt-1 text-sm text-amber-800">価格設定済み {pricedItemCount}件 / 全{myWantedList.length}件（数量を反映）</p>
+      </section>
       <BackLink href="/" label="ホームに戻る" />
       <h1 className="text-2xl font-bold flex items-center gap-2 mb-6">🛒 WANTED 一覧</h1>
 

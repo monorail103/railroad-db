@@ -68,6 +68,7 @@ export const wanted = pgTable("wanted", {
   maker: text("maker"), 
   name: text("name").notNull(),
   scale: itemScale("scale").notNull().default("N"), 
+  price: integer("price"),
   remarks: text("remarks"), 
   amount: integer("amount").notNull().default(1), 
   priority: wantedPriority("priority").notNull().default("MEDIUM"), // 優先度を追加（デフォルトは中）

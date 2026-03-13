@@ -32,8 +32,8 @@ export default async function WantedDetailPage({
   const [item] = await db
     .select({
       id: wanted.id, maker: wanted.maker, name: wanted.name, scale: wanted.scale,
-      remarks: wanted.remarks, amount: wanted.amount, photoUrl: wanted.photoUrl,
-      storeUrl: wanted.storeUrl, projectId: wanted.projectId, projectName: projects.name,
+      remarks: wanted.remarks, amount: wanted.amount, price: wanted.price, photoUrl: wanted.photoUrl,
+      storeUrl: wanted.storeUrl, priority: wanted.priority, projectId: wanted.projectId, projectName: projects.name,
     })
     .from(wanted)
     .innerJoin(projects, eq(wanted.projectId, projects.id))
@@ -79,6 +79,12 @@ export default async function WantedDetailPage({
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
             <div className="text-sm text-slate-500 mb-1">希望数量</div>
             <div className="text-xl font-bold text-slate-800">{item.amount}</div>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+            <div className="text-sm text-slate-500 mb-1">想定価格（1個）</div>
+            <div className="text-xl font-bold text-slate-800">
+              {item.price !== null ? `${item.price.toLocaleString("ja-JP")}円` : "未設定"}
+            </div>
           </div>
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
             <div className="text-sm text-slate-500 mb-1">備考・メモ</div>
@@ -144,6 +150,14 @@ export default async function WantedDetailPage({
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">優先度</label>
+              <select name="priority" defaultValue={item.priority} className="border p-2 rounded w-full" required>
+                <option value="HIGH">高</option>
+                <option value="MEDIUM">中</option>
+                <option value="LOW">低</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">数量</label>
               <input type="number" name="amount" defaultValue={item.amount} min="1" className="border p-2 rounded w-full" required />
             </div>
@@ -151,6 +165,10 @@ export default async function WantedDetailPage({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">購入予定の店舗URL</label>
             <input type="url" name="storeUrl" defaultValue={item.storeUrl || ""} className="border p-2 rounded w-full" placeholder="例: https://www.example.com/item/12345" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">想定価格 (円・任意)</label>
+            <input type="number" name="price" defaultValue={item.price ?? ""} min="0" step="1" className="border p-2 rounded w-full" placeholder="例: 1500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">備考</label>

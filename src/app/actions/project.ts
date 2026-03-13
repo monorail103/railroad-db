@@ -67,8 +67,17 @@ export async function handleAddWanted(projectId: string, formData: FormData) {
   const scale = formData.get("scale") as Scale;
   const remarks = formData.get("remarks") as string;
   const storeUrl = formData.get("storeUrl") as string;
+  const rawPrice = (formData.get("price") as string | null)?.trim() ?? "";
+  const parsedPrice = rawPrice ? Number.parseInt(rawPrice, 10) : null;
+  const price = parsedPrice !== null && Number.isFinite(parsedPrice) && parsedPrice >= 0
+    ? parsedPrice
+    : null;
   
-  const priority = formData.get("priority") as "HIGH" | "MEDIUM" | "LOW";
+  const rawPriority = formData.get("priority") as string | null;
+  const priority: "HIGH" | "MEDIUM" | "LOW" =
+    rawPriority === "HIGH" || rawPriority === "MEDIUM" || rawPriority === "LOW"
+      ? rawPriority
+      : "MEDIUM";
 
   if (!name || !scale) return;
 
@@ -78,7 +87,8 @@ export async function handleAddWanted(projectId: string, formData: FormData) {
     maker: maker?.trim() || null,
     name, 
     scale, 
-    remarks,
+    price,
+    remarks: remarks?.trim() || null,
     storeUrl: storeUrl?.trim() || null,
     priority,
   });

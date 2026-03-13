@@ -28,6 +28,23 @@ export function AddWantedForm({ projectId }: { projectId: string }) {
           placeholder="メーカー (例: KATO)"
           className="border border-amber-300 bg-white p-2 rounded-lg w-full sm:w-44 text-sm placeholder:text-slate-400"
         />
+        <select
+          name="priority"
+          defaultValue="MEDIUM"
+          className="border border-amber-300 bg-white p-2 rounded-lg w-full sm:w-auto text-sm"
+        >
+          <option value="HIGH">優先度: 高</option>
+          <option value="MEDIUM">優先度: 中</option>
+          <option value="LOW">優先度: 低</option>
+        </select>
+        <input
+          type="number"
+          name="price"
+          min="0"
+          step="1"
+          placeholder="想定価格 (円・任意)"
+          className="border border-amber-300 bg-white p-2 rounded-lg w-full sm:w-44 text-sm placeholder:text-slate-400"
+        />
         
       </div>
 
